@@ -5,6 +5,7 @@
 | ファイル | 書くフェーズ |
 | --- | --- |
 | `00-env.txt` | 0 |
+| `01-tokenize.txt` | 1 |
 | `02-ollama.md` | 2 |
 | `03-llamacpp.md` | 3 |
 | `04-api.md` | 4 |

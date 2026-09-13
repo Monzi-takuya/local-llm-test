@@ -6,9 +6,9 @@
 
 ## 現在地
 
-- **フェーズ**: 1（トークン化とパイプライン）
+- **フェーズ**: 2（Ollama で GPU 確認）
 - **状態**: 未着手
-- **次に開くファイル**: [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md)
+- **次に開くファイル**: [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md)
 
 状態の意味: `未着手` / `実施中` / `ブロック` / `完了`
 
@@ -18,7 +18,7 @@
 | --- | --- | --- | --- |
 | 骨格 | リポジトリと進行管理 | 完了 | このディレクトリ構成と MD |
 | 0 | WSL 土台 | 完了 | [`phases/00-wsl-env.md`](phases/00-wsl-env.md) |
-| 1 | トークン化とパイプライン | 未着手 | [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md) |
+| 1 | トークン化とパイプライン | 完了 | [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md) |
 | 2 | Ollama で GPU 確認 | 未着手 | [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md) |
 | 3 | llama.cpp で中身を見る | 未着手 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
 | 4 | OpenAI 互換 API | 未着手 | [`phases/04-openai-api.md`](phases/04-openai-api.md) |
@@ -35,6 +35,10 @@
 4. 「現在地」を次フェーズの `未着手` のまま更新し、チャットを止めて確認を待つ
 5. 失敗したら状態を `ブロック` にし、現象と次の仮説を記録する
 
+コミット / プッシュ前は `.cursor/rules/push-secrets-check.mdc` に従い、ステージ差分に秘密情報がないか確認する。`results/00-env.txt` 程度は private リポジトリでは可。
+
+資料の粒度は `.cursor/rules/audience-and-notes.mdc`（クラウド/Web は既知、LLM 用語は定義する）。`notes/` の HTML コメントは本文に折り込んで消す。
+
 Agent で推論や `nvidia-smi` を回すときは、サンドボックス外のターミナルを使う。
 
 ## ログ
@@ -44,3 +48,4 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 2026-09-13 | 骨格 | README / PROGRESS / phases / docs / .gitignore を作成。インストールと推論は未実施 |
 | 2026-09-13 | 0 | nvidia-smi で RTX 5060 8GB を確認。RAM 16GB。当初 `.wslconfig` なし。cmake/jq は sudo 不可のため ~/.local。uv で Python 3.12.14 の .venv と ~/models を作成 |
 | 2026-09-13 | 0 追記 | 正しい `%UserProfile%\.wslconfig` を `sample.wslconfig` 相当で作り直し再起動。mirrored 適用を確認（`192.168.40.85`）。GPU・16GB・.venv は維持 |
+| 2026-09-13 | 1 | Qwen2.5-7B-Instruct の tokenizer のみ。日本語 14→43 / 英語 13→42 トークン。`notes/pipeline.md` と `scripts/tokenize_demo.py`。GPU・GGUF なし |

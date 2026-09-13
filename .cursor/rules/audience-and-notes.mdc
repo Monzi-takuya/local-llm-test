@@ -1,0 +1,21 @@
+---
+description: 資料と解説の読者レベル（クラウド/Web は既知、LLM 用語は定義する）
+alwaysApply: true
+---
+
+# 読者レベルとノートの書き方
+
+コーディングは LLM に任せる。設計・制約・「なぜそうか」は人が握る。クラウド / IAM / HTTP / CLI / WSL の入門は不要。LLM / tokenizer / Transformer は新規なので、用語は **初出で 1 文定義** してから使う。
+
+## 書き方
+
+- 日本語。`temperature` / `logits` / `BPE` / `KV cache` などは英語のまま
+- 短い結論 → なぜそうか → 実測か混同ポイント。コードスタイルの説教はしない
+
+省略してよい: HTTP、JSON、npm、クラウド入門、一般的な CLI。
+
+厚くする: LLM 固有の用語、混同点（Word2vec vs BPE、KV cache vs HTTP cache）、このマシンの制約（8GB VRAM、Q4）。
+
+## notes/
+
+HTML コメントは本人の質問。次の編集で本文に折り込み、コメントは消す。完成稿に質問コメントを残さない。

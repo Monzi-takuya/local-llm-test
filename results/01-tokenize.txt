@@ -1,0 +1,162 @@
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+model (tokenizer only): Qwen/Qwen2.5-7B-Instruct
+vocab_size: 151643
+bos: None id=None
+eos: '<|im_end|>' id=151645
+pad: '<|endoftext|>' id=151643
+unk: None id=None
+
+=== raw: WSLからローカルLLMを動かしたい。 ===
+chars: 19
+tokens: 14
+id -> token -> decode
+      7433  'WS'  'WS'
+        43  'L'  'L'
+     53931  'ãģĭãĤī'  'から'
+     41534  'ãĥŃ'  'ロ'
+     37148  'ãĥ¼ãĤ'  'ー�'
+       104  '«'  '�'
+     32610  'ãĥ«'  'ル'
+      4086  'LL'  'LL'
+        44  'M'  'M'
+     29412  'ãĤĴ'  'を'
+     90775  'åĭķ'  '動'
+     31049  'ãģĭ'  'か'
+    128800  'ãģĹãģŁãģĦ'  'したい'
+      1773  'ãĢĤ'  '。'
+
+--- chat template string ---
+<|im_start|>system
+You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+<|im_start|>user
+WSLからローカルLLMを動かしたい。<|im_end|>
+<|im_start|>assistant
+
+
+=== chat template applied ===
+chars: 167
+tokens: 43
+id -> token -> decode
+    151644  '<|im_start|>'  '<|im_start|>'
+      8948  'system'  'system'
+       198  'Ċ'  '\n'
+      2610  'You'  'You'
+       525  'Ġare'  ' are'
+      1207  'ĠQ'  ' Q'
+     16948  'wen'  'wen'
+        11  ','  ','
+      3465  'Ġcreated'  ' created'
+       553  'Ġby'  ' by'
+     54364  'ĠAlibaba'  ' Alibaba'
+     14817  'ĠCloud'  ' Cloud'
+        13  '.'  '.'
+      1446  'ĠYou'  ' You'
+       525  'Ġare'  ' are'
+       264  'Ġa'  ' a'
+     10950  'Ġhelpful'  ' helpful'
+     17847  'Ġassistant'  ' assistant'
+        13  '.'  '.'
+    151645  '<|im_end|>'  '<|im_end|>'
+       198  'Ċ'  '\n'
+    151644  '<|im_start|>'  '<|im_start|>'
+       872  'user'  'user'
+       198  'Ċ'  '\n'
+      7433  'WS'  'WS'
+        43  'L'  'L'
+     53931  'ãģĭãĤī'  'から'
+     41534  'ãĥŃ'  'ロ'
+     37148  'ãĥ¼ãĤ'  'ー�'
+       104  '«'  '�'
+     32610  'ãĥ«'  'ル'
+      4086  'LL'  'LL'
+        44  'M'  'M'
+     29412  'ãĤĴ'  'を'
+     90775  'åĭķ'  '動'
+     31049  'ãģĭ'  'か'
+    128800  'ãģĹãģŁãģĦ'  'したい'
+      1773  'ãĢĤ'  '。'
+    151645  '<|im_end|>'  '<|im_end|>'
+       198  'Ċ'  '\n'
+    151644  '<|im_start|>'  '<|im_start|>'
+     77091  'assistant'  'assistant'
+       198  'Ċ'  '\n'
+
+ID count change: raw 14 -> templated 43
+same as raw? False
+
+=== raw: Summarize why quantization helps 8GB VRAM. ===
+chars: 42
+tokens: 13
+id -> token -> decode
+      9190  'Sum'  'Sum'
+      5612  'mar'  'mar'
+       551  'ize'  'ize'
+      3170  'Ġwhy'  ' why'
+     10272  'Ġquant'  ' quant'
+      2022  'ization'  'ization'
+      8609  'Ġhelps'  ' helps'
+       220  'Ġ'  ' '
+        23  '8'  '8'
+      5381  'GB'  'GB'
+     19168  'ĠVR'  ' VR'
+      1402  'AM'  'AM'
+        13  '.'  '.'
+
+--- chat template string ---
+<|im_start|>system
+You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+<|im_start|>user
+Summarize why quantization helps 8GB VRAM.<|im_end|>
+<|im_start|>assistant
+
+
+=== chat template applied ===
+chars: 190
+tokens: 42
+id -> token -> decode
+    151644  '<|im_start|>'  '<|im_start|>'
+      8948  'system'  'system'
+       198  'Ċ'  '\n'
+      2610  'You'  'You'
+       525  'Ġare'  ' are'
+      1207  'ĠQ'  ' Q'
+     16948  'wen'  'wen'
+        11  ','  ','
+      3465  'Ġcreated'  ' created'
+       553  'Ġby'  ' by'
+     54364  'ĠAlibaba'  ' Alibaba'
+     14817  'ĠCloud'  ' Cloud'
+        13  '.'  '.'
+      1446  'ĠYou'  ' You'
+       525  'Ġare'  ' are'
+       264  'Ġa'  ' a'
+     10950  'Ġhelpful'  ' helpful'
+     17847  'Ġassistant'  ' assistant'
+        13  '.'  '.'
+    151645  '<|im_end|>'  '<|im_end|>'
+       198  'Ċ'  '\n'
+    151644  '<|im_start|>'  '<|im_start|>'
+       872  'user'  'user'
+       198  'Ċ'  '\n'
+      9190  'Sum'  'Sum'
+      5612  'mar'  'mar'
+       551  'ize'  'ize'
+      3170  'Ġwhy'  ' why'
+     10272  'Ġquant'  ' quant'
+      2022  'ization'  'ization'
+      8609  'Ġhelps'  ' helps'
+       220  'Ġ'  ' '
+        23  '8'  '8'
+      5381  'GB'  'GB'
+     19168  'ĠVR'  ' VR'
+      1402  'AM'  'AM'
+        13  '.'  '.'
+    151645  '<|im_end|>'  '<|im_end|>'
+       198  'Ċ'  '\n'
+    151644  '<|im_start|>'  '<|im_start|>'
+     77091  'assistant'  'assistant'
+       198  'Ċ'  '\n'
+
+ID count change: raw 13 -> templated 42
+same as raw? False

@@ -42,7 +42,7 @@ Prompt → chat template → token IDs → (後続フェーズ: GPU) → logits 
 
 ```bash
 source /home/kuos1/dev/local-llm-test/.venv/bin/activate
-uv pip install transformers tokenizers huggingface_hub
+uv pip install transformers tokenizers huggingface_hub jinja2
 ```
 
 `scripts/tokenize_demo.py` を作り、同じ日本語文で少なくとも次を表示する。
@@ -68,11 +68,18 @@ uv pip install transformers tokenizers huggingface_hub
 
 ## 合格条件
 
-- [ ] `notes/pipeline.md` があり、上の項目をカバーしている
-- [ ] `scripts/tokenize_demo.py` が `.venv` の 3.12 でエラーなく終わる
-- [ ] chat template あり / なしで ID 列が変わることを確認した
-- [ ] GPU も GGUF も使っていない
-- [ ] [`../PROGRESS.md`](../PROGRESS.md) を更新した
+- [x] `notes/pipeline.md` があり、上の項目をカバーしている
+- [x] `scripts/tokenize_demo.py` が `.venv` の 3.12 でエラーなく終わる
+- [x] chat template あり / なしで ID 列が変わることを確認した
+- [x] GPU も GGUF も使っていない
+- [x] [`../PROGRESS.md`](../PROGRESS.md) を更新した
+
+実施メモ（2026-09-13）:
+
+- tokenizer: `Qwen/Qwen2.5-7B-Instruct`（重みは未取得。cache は tokenizer.json / vocab / merges / config のみ）
+- `apply_chat_template` に jinja2 が必要だったので追加
+- 日本語 raw 19 文字 / 14 トークン → template 後 43。英語 raw 42 文字 / 13 トークン → template 後 42
+- ログ: [`../results/01-tokenize.txt`](../results/01-tokenize.txt)
 
 ## 失敗したとき
 
