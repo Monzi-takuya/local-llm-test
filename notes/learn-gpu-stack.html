@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>llama.cpp / GPU バックエンド — 学習ノート</title>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --paper: #fffdf8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d0c0;
+      --accent: #0f6b5c;
+      --accent-2: #b45309;
+      --gpu: #1d4ed8;
+      --cpu: #57534e;
+      --warn: #9a3412;
+      --ok: #166534;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    header.hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.5rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.35; }
+    h2 {
+      font-size: 1.25rem;
+      margin: 2.2rem 0 0.7rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
+    p, li { color: var(--ink); }
+    .lead { font-size: 1.02rem; }
+    .muted { color: var(--muted); }
+    nav.toc {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    nav.toc ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+    nav.toc a { color: var(--accent); }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef7f4;
+      padding: 0.8rem 1rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1rem 0;
+    }
+    .warn {
+      border-left-color: var(--accent-2);
+      background: #fff7ed;
+    }
+    .machine {
+      border-left-color: var(--gpu);
+      background: #eff6ff;
+    }
+    figure.diagram {
+      margin: 1.1rem 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem 0.6rem 0.4rem;
+      overflow-x: auto;
+    }
+    figcaption {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0.2rem 0 0.6rem;
+    }
+    svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    code, kbd {
+      font-family: ui-monospace, "Cascadia Code", "Noto Sans Mono", monospace;
+      font-size: 0.86em;
+      background: #efe8da;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre {
+      background: #1c1915;
+      color: #f5f0e8;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #efe8da; }
+    .legend span {
+      display: inline-block;
+      width: 0.75rem; height: 0.75rem;
+      border-radius: 2px;
+      margin-right: 0.25rem;
+      vertical-align: -0.05rem;
+    }
+    footer {
+      margin-top: 2.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>llama.cpp と GPU バックエンド</h1>
+      <p class="lead">フェーズ 3 の実測メモが前提にしていた言葉を、図で分解する学習ノート。プログラム（実行ファイル）とモデル（重み）は別物、GPU に仕事を渡す道は複数ある、が結論。</p>
+      <p class="muted">このマシン: RTX 5060 8GB（NVIDIA / Blackwell）+ WSL2。実測は <code>results/03-llamacpp.md</code>。</p>
+    </header>
+
+    <nav class="toc" aria-label="目次">
+      <strong>目次</strong>
+      <ol>
+        <li><a href="#llamacpp">llama.cpp とは</a></li>
+        <li><a href="#image">イメージ: llama-cli + GPU ベンダ実装</a></li>
+        <li><a href="#opt-models"><code>~/opt</code> と <code>~/models</code></a></li>
+        <li><a href="#so">.so ファイル（共有ライブラリ）</a></li>
+        <li><a href="#cuda">CUDA</a></li>
+        <li><a href="#windows-driver">なぜ Windows 側の CUDA ドライバか</a></li>
+        <li><a href="#backends">Vulkan / ROCm / SYCL</a></li>
+        <li><a href="#ngl"><code>-ngl</code>（GPU に載せる層数）</a></li>
+        <li><a href="#this-run">この検証で実際に組んだ形</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="llamacpp">1. llama.cpp とは</h2>
+    <p><strong>llama.cpp</strong> は、GGUF という形式のモデルファイルを読み、token ID を GPU（または CPU）で次のトークンに進める <strong>推論エンジン</strong> である。チャットアプリでもクラウドでもない。C++ で書かれたプログラム群（<code>llama-cli</code>、<code>llama-server</code> など）の総称として使っている。</p>
+    <p><strong>Ollama</strong> は、そのエンジンを中に隠し、モデルの download と <code>localhost:11434</code> の HTTP を足した箱である。フェーズ 2 で日本語が出たのは Ollama 経由。フェーズ 3 は箱を外して、同じ系統の計算を <code>llama-cli</code> で直接回した。</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 280" role="img" aria-label="Ollama が llama.cpp を包んでいる図">
+        <rect x="20" y="20" width="680" height="240" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+        <text x="40" y="48" font-size="16" font-weight="700" fill="#9a3412">Ollama（フェーズ 2 で使った箱）</text>
+        <text x="40" y="70" font-size="12" fill="#7c2d12">モデル取得 / 常駐 HTTP / 中のエンジンはユーザから見えにくい</text>
+        <rect x="50" y="90" width="280" height="140" rx="10" fill="#ecfdf5" stroke="#0f766e" stroke-width="2"/>
+        <text x="70" y="118" font-size="15" font-weight="700" fill="#115e59">llama.cpp</text>
+        <text x="70" y="142" font-size="12" fill="#134e4a">tokenize → forward → sample</text>
+        <text x="70" y="164" font-size="12" fill="#134e4a">CLI: llama-cli</text>
+        <text x="70" y="186" font-size="12" fill="#134e4a">レバー: -ngl / -c / -n</text>
+        <rect x="360" y="90" width="300" height="140" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="380" y="118" font-size="15" font-weight="700" fill="#1e3a8a">GPU 計算の道</text>
+        <text x="380" y="142" font-size="12" fill="#1e40af">CUDA（NVIDIA）</text>
+        <text x="380" y="164" font-size="12" fill="#1e40af">または Vulkan / ROCm / SYCL</text>
+        <text x="380" y="186" font-size="12" fill="#1e40af">どれか 1 本が実際に動く</text>
+      </svg>
+      <figcaption>Ollama の中に llama.cpp があり、llama.cpp が GPU 用の道を選ぶ。</figcaption>
+    </figure>
+
+    <div class="callout">
+      混同しないこと: <strong>モデル名</strong>（Qwen2.5-7B）は「何を考えるか」。llama.cpp は「どう計算するか」。同じ Qwen を Ollama でも llama.cpp でも回せる。フェーズ 1 の tokenizer だけとも別で、あちらは重みを載せていない。
+    </div>
+
+    <h2 id="image">1b. イメージ: llama-cli + GPU ベンダ実装でモデルを動かす</h2>
+    <p><strong>そのイメージで合っている。</strong> ただし部品は 2 つではなく 4 段に分けると、フェーズ 3 の symlink が意味を持つ。</p>
+    <ol>
+      <li><strong>モデル</strong>（GGUF）… 重み。考えの中身。</li>
+      <li><strong>llama-cli</strong>… 進行役。tokenize、何層やるか、<code>-ngl</code>、sampling。GPU の機種知識は持たない。</li>
+      <li><strong>llama.cpp 側のベンダ実装</strong>（<code>libggml-cuda.so</code> など）… 「CUDA の言葉で行列を GPU に投げる」コード。NVIDIA 用 / AMD 用で別ファイル。</li>
+      <li><strong>GPU ベンダのドライバ</strong>… カードそのものを動かす特権側。この PC では <strong>Windows に入っている NVIDIA ドライバ</strong>。</li>
+    </ol>
+    <p>3 が「llama.cpp が書いた CUDA 用プラグイン」、4 が「NVIDIA が書いた本物のドライバ」。両方とも広義の「GPU ベンダ側の道」だが、入れた場所が違う。3 は WSL のファイル（Ollama 同梱）、4 は Windows。</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 300" role="img" aria-label="llama-cli がベンダ実装経由で GPU に載せる">
+        <rect x="24" y="20" width="160" height="70" rx="10" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="104" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">GGUF</text>
+        <text x="104" y="68" text-anchor="middle" font-size="11" fill="#1e40af">~/models</text>
+        <text x="198" y="58" font-size="18" fill="#b45309">→</text>
+        <rect x="220" y="20" width="170" height="70" rx="10" fill="#ecfdf5" stroke="#0f766e" stroke-width="2"/>
+        <text x="305" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="#115e59">llama-cli</text>
+        <text x="305" y="68" text-anchor="middle" font-size="11" fill="#134e4a">進行役（WSL）</text>
+        <text x="402" y="58" font-size="18" fill="#b45309">→</text>
+        <rect x="424" y="16" width="272" height="78" rx="10" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+        <text x="560" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#9a3412">libggml-cuda.so</text>
+        <text x="560" y="58" text-anchor="middle" font-size="11" fill="#7c2d12">llama.cpp の NVIDIA 用実装</text>
+        <text x="560" y="76" text-anchor="middle" font-size="11" fill="#7c2d12">Ollama が WSL に同梱</text>
+        <path d="M560 94 V120" stroke="#1d4ed8" stroke-width="2"/>
+        <rect x="424" y="120" width="272" height="70" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="560" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">NVIDIA ドライバ</text>
+        <text x="560" y="168" text-anchor="middle" font-size="11" fill="#1e40af">Windows 側（カードの所有者）</text>
+        <path d="M560 190 V214" stroke="#1d4ed8" stroke-width="2"/>
+        <rect x="424" y="214" width="272" height="62" rx="10" fill="#1d4ed8"/>
+        <text x="560" y="242" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">RTX 5060</text>
+        <text x="560" y="262" text-anchor="middle" font-size="11" fill="#dbeafe">VRAM に層を置く</text>
+        <rect x="24" y="120" width="366" height="156" rx="10" fill="#f5f5f4" stroke="#d9d0c0"/>
+        <text x="44" y="148" font-size="12" font-weight="700" fill="#44403c">WSL から見える橋</text>
+        <text x="44" y="172" font-size="12" font-family="ui-monospace,monospace" fill="#44403c">/usr/lib/wsl/lib/libcuda.so</text>
+        <text x="44" y="194" font-size="12" fill="#57534e">CUDA の呼び出しを、Windows の</text>
+        <text x="44" y="214" font-size="12" fill="#57534e">ドライバへ渡す。Linux 用の</text>
+        <text x="44" y="234" font-size="12" fill="#57534e">NVIDIA ドライバは入れない。</text>
+      </svg>
+      <figcaption>進行役は llama-cli。GPU に届くまでに「llama.cpp の CUDA 実装」と「Windows の NVIDIA ドライバ」の二段がある。</figcaption>
+    </figure>
+
+    <h2 id="opt-models">2. <code>~/opt</code> は「opt ファイル」ではない</h2>
+    <p>Linux の慣習で、<code>/opt</code> やホームの <code>~/opt</code> は <strong>配布物のプログラムを置くディレクトリ</strong> である。拡張子 <code>.opt</code> のファイル形式ではない。コンパイラの最適化オプション <code>-O2</code> とも無関係。</p>
+    <p>対して <code>~/models</code> は <strong>モデル本体（GGUF）</strong> を置く場所。プログラムとデータを分けているだけ。Excel 本体が <code>C:\Program Files</code> にあり、xlsx がドキュメントフォルダにあるのと同じ切り方。</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 300" role="img" aria-label="opt はプログラム、models は重み">
+        <rect x="24" y="24" width="320" height="252" rx="12" fill="#ecfdf5" stroke="#0f766e" stroke-width="2"/>
+        <text x="44" y="56" font-size="15" font-weight="700" fill="#115e59">~/opt/llama.cpp/ …</text>
+        <text x="44" y="80" font-size="12" fill="#134e4a">プログラム側（何度も使い回す）</text>
+        <rect x="44" y="100" width="276" height="36" rx="6" fill="#fff" stroke="#0f766e"/>
+        <text x="56" y="123" font-size="13" font-family="ui-monospace,monospace" fill="#115e59">llama-cli</text>
+        <rect x="44" y="146" width="276" height="36" rx="6" fill="#fff" stroke="#0f766e"/>
+        <text x="56" y="169" font-size="13" font-family="ui-monospace,monospace" fill="#115e59">libggml-cuda.so →</text>
+        <rect x="44" y="192" width="276" height="36" rx="6" fill="#fff" stroke="#0f766e"/>
+        <text x="56" y="215" font-size="13" font-family="ui-monospace,monospace" fill="#115e59">libggml-vulkan.so</text>
+        <text x="44" y="252" font-size="11" fill="#5c564c">git に入れない。マシンにインストール</text>
+
+        <text x="360" y="150" font-size="22" fill="#b45309">→ -m</text>
+
+        <rect x="400" y="24" width="296" height="252" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="420" y="56" font-size="15" font-weight="700" fill="#1e3a8a">~/models/ …</text>
+        <text x="420" y="80" font-size="12" fill="#1e40af">データ側（モデルを替える）</text>
+        <rect x="420" y="100" width="256" height="52" rx="6" fill="#fff" stroke="#1d4ed8"/>
+        <text x="432" y="122" font-size="12" font-family="ui-monospace,monospace" fill="#1e3a8a">Qwen2.5-7B-…gguf</text>
+        <text x="432" y="140" font-size="11" fill="#1e40af">重み + tokenizer 語彙</text>
+        <rect x="420" y="162" width="256" height="52" rx="6" fill="#fff" stroke="#1d4ed8"/>
+        <text x="432" y="184" font-size="12" font-family="ui-monospace,monospace" fill="#1e3a8a">gemma-3-4b-it-…gguf</text>
+        <text x="432" y="202" font-size="11" fill="#1e40af">別の会社の別語彙</text>
+        <text x="420" y="252" font-size="11" fill="#5c564c">git に入れない。数 GB</text>
+      </svg>
+      <figcaption>左側が道具、右側が材料。<code>-m</code> で材料を指定する。</figcaption>
+    </figure>
+
+    <pre><code>~/opt/llama.cpp/llama-b10938/llama-cli \
+  -m ~/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf \
+  -ngl 99 -c 2048 -n 64 -p "…"</code></pre>
+    <p>1 行目が「どのエンジンで」、<code>-m</code> が「どの脳で」。エンジンは 1 つで、モデルファイルを差し替えれば Qwen にも Gemma にもなる。逆に、Gemma の GGUF を Qwen 用だと思って読ませても動かない（中の tokenizer / 層の形が違う）。</p>
+    <div class="callout warn">
+      Ollama の実体は <code>/usr/share/ollama</code> に別管理される。フェーズ 3 ではそれを変換せず、Hugging Face の GGUF を <code>~/models</code> に置いた。同じ「7B Q4」クラスでも、ファイルは別物。
+    </div>
+
+    <h2 id="so">3. .so ファイルとは</h2>
+    <p><strong>.so</strong>（shared object）は、Linux の <strong>共有ライブラリ</strong> である。Windows の <code>.dll</code>、macOS の <code>.dylib</code> に相当する。「単体では起動しないが、実行ファイルが必要になったらメモリに載せる部品」。</p>
+    <p><code>llama-cli</code> 本体は「GGUF を読んで推論する枠」である。NVIDIA 向けの GPU カーネル全部を 1 本の実行ファイルに焼き込むと巨大になり、AMD 機では無駄になる。そこで GPU ベンダごとの実装を <code>libggml-cuda.so</code> や <code>libggml-vulkan.so</code> に分け、起動時に隣のファイルを探す。</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 250" role="img" aria-label="llama-cli が隣の so を読み込む">
+        <rect x="40" y="80" width="160" height="70" rx="10" fill="#ecfdf5" stroke="#0f766e" stroke-width="2"/>
+        <text x="120" y="110" text-anchor="middle" font-size="14" font-weight="700" fill="#115e59">llama-cli</text>
+        <text x="120" y="130" text-anchor="middle" font-size="11" fill="#134e4a">実行ファイル</text>
+        <path d="M210 115 H270" stroke="#b45309" stroke-width="2" marker-end="url(#arrow)"/>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#b45309"/>
+          </marker>
+        </defs>
+        <rect x="280" y="30" width="180" height="58" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="370" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a8a">libggml-cuda.so</text>
+        <text x="370" y="72" text-anchor="middle" font-size="11" fill="#1e40af">NVIDIA 用（今回使った）</text>
+        <rect x="280" y="100" width="180" height="58" rx="8" fill="#f5f5f4" stroke="#78716c" stroke-width="1.5"/>
+        <text x="370" y="124" text-anchor="middle" font-size="12" fill="#44403c">libggml-vulkan.so</text>
+        <text x="370" y="142" text-anchor="middle" font-size="11" fill="#57534e">汎用 GPU API</text>
+        <rect x="280" y="170" width="180" height="50" rx="8" fill="#f5f5f4" stroke="#78716c" stroke-width="1.5"/>
+        <text x="370" y="200" text-anchor="middle" font-size="12" fill="#44403c">（ROCm / SYCL も同様）</text>
+        <rect x="500" y="70" width="180" height="110" rx="10" fill="#1d4ed8"/>
+        <text x="590" y="118" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">RTX 5060</text>
+        <text x="590" y="140" text-anchor="middle" font-size="11" fill="#dbeafe">VRAM 8GB</text>
+        <path d="M460 59 H500" stroke="#1d4ed8" stroke-width="2" marker-end="url(#arrow2)"/>
+        <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#1d4ed8"/>
+        </marker>
+      </svg>
+      <figcaption>同じディレクトリ（または <code>LD_LIBRARY_PATH</code>）にある .so を実行時に読む。</figcaption>
+    </figure>
+
+    <p><code>LD_LIBRARY_PATH</code> は「.so をどのフォルダから探すか」を足す環境変数。フェーズ 3 では次を付けた。Ollama が既に持っていた CUDA 用 .so と、その依存（<code>libcudart</code> など）を llama-cli から見えるようにするため。</p>
+    <pre><code>export LD_LIBRARY_PATH="$BIN:/usr/local/lib/ollama/cuda_v13:/usr/lib/wsl/lib"
+ln -sfn /usr/local/lib/ollama/cuda_v13/libggml-cuda.so "$BIN/libggml-cuda.so"</code></pre>
+    <p><code>ln -sfn</code> はコピーではなく <strong>symlink</strong>（別名）。実体は Ollama 側にあり、llama-cli の隣に「CUDA 用部品はここ」と指しているだけ。新規ライブラリを apt で入れたわけではない。</p>
+    <div class="callout">
+      <code>--list-devices</code> が <code>(none)</code> なら、実行ファイルはあるが <strong>GPU 用 .so が載っていない / その道のドライバが無い</strong>。Vulkan 版公式バイナリがまさにこれだった。
+    </div>
+
+    <h2 id="cuda">4. CUDA とは</h2>
+    <p><strong>CUDA</strong> は NVIDIA が作った、GPU を汎用計算に使うための仕組み（API + コンパイラ + ランタイム）である。ゲームの「絵を描く」だけでなく、行列計算を GPU に投げられる。LLM の forward（層を通して次トークンのスコアを出す計算）はまさにその用途。</p>
+    <p>名前が混ざるので、役割を 3 つに分ける。</p>
+    <table>
+      <thead>
+        <tr><th>層</th><th>何をするか</th><th>このマシン</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ドライバ</td>
+          <td>OS から GPU を触る土台。Windows 側に入り、WSL からは <code>/dev/dxg</code> と <code>libcuda.so</code> で見える</td>
+          <td>あり（nvidia-smi 成功）。<strong>Linux 用 NVIDIA ドライバは入れない</strong></td>
+        </tr>
+        <tr>
+          <td>ランタイム .so</td>
+          <td>アプリが CUDA を呼ぶときの共有ライブラリ（<code>libcudart</code>、<code>libcublas</code>、<code>libggml-cuda.so</code>）</td>
+          <td>Ollama が <code>/usr/local/lib/ollama/cuda_v13/</code> に同梱</td>
+        </tr>
+        <tr>
+          <td>Toolkit（<code>nvcc</code>）</td>
+          <td>CUDA のコードを <strong>自分でコンパイル</strong>するための開発ツール</td>
+          <td><strong>未導入</strong>。ソースから llama.cpp をビルドするときだけ必要。入れる前に確認する</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>「CUDA が見える」＝ nvidia-smi が GPU を出すこと。<strong>「llama.cpp が CUDA で計算している」</strong>＝ <code>libggml-cuda.so</code> が載り、<code>--list-devices</code> に <code>CUDA0</code> が出ること。前者だけだと、エンジンが CPU に落ちることがある（フェーズ 3 の比較対象）。</p>
+    <div class="callout machine">
+      実測: <code>CUDA0: NVIDIA GeForce RTX 5060</code>。compute capability 12.0（Blackwell）。古いバイナリは GPU を列挙できても中のカーネルが 12.0 を知らず、CPU 並みの速度になる。
+    </div>
+
+    <h2 id="windows-driver">4b. なぜ Windows 側の CUDA ドライバを使うか</h2>
+    <p><strong>GPU というハードウェアを握っているのが Windows だから。</strong> WSL2 は Linux ディストロだが、PCIe の RTX 5060 をカーネルが直接所有しているのはホスト OS（Windows）である。Linux 用 NVIDIA ドライバを WSL の中に入れると、同じカードを二重に取り合う形になり、公式にも「入れるな」とされている。このリポジトリの制約もそれ。</p>
+    <p>では WSL の <code>nvidia-smi</code> や <code>libcuda.so</code> は何か。それは <strong>Windows ドライバへの橋</strong> である。実体は <code>/usr/lib/wsl/lib/</code>（Microsoft が配る WSL GPU 用ライブラリ）。呼び出しはだいたい次の順。</p>
+    <pre><code>WSL の llama-cli
+  → libggml-cuda.so（計算の中身）
+  → libcudart / libcuda.so（CUDA の入口）
+  → /dev/dxg（WSL が GPU を見せるデバイス）
+  → Windows の NVIDIA ドライバ
+  → RTX 5060</code></pre>
+    <p>だから「WSL から CUDA を使う」＝ Linux にドライバを新規インストールする、ではない。Windows に入っているドライバ（このマシンでは nvidia-smi の KMD 610 系）を、橋経由で借りる。</p>
+    <table>
+      <thead>
+        <tr><th></th><th>入れる</th><th>入れない</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>GPU を動かす土台</td>
+          <td>Windows の NVIDIA ドライバ（GeForce アプリ等で更新）</td>
+          <td>WSL 内の Linux 用 NVIDIA ドライバ</td>
+        </tr>
+        <tr>
+          <td>アプリが CUDA を呼ぶ部品</td>
+          <td>Ollama 同梱の .so、または（必要なら）CUDA Toolkit</td>
+          <td>ドライバの代わりに Toolkit だけ入れる、は不可</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Vulkan 公式バイナリがデバイス 0 件だったのも同じ地図で読める。橋として配られているのが今回は <strong>CUDA 用</strong>（<code>libcuda.so</code>）で、NVIDIA の Vulkan ICD は WSL 側に無かった。ハードウェアは 1 枚、見える API はドライバと橋の組み合わせで決まる。</p>
+
+    <h2 id="backends">5. Vulkan / ROCm / SYCL は「CUDA の代わりの道」</h2>
+    <p>GPU 計算の道は CUDA 一本ではない。llama.cpp は <strong>バックエンド</strong>（実際に計算する実装）を差し替えられる。GitHub Releases に <code>ubuntu-vulkan</code> / <code>ubuntu-rocm</code> / <code>ubuntu-sycl</code> と並んでいたのは、「同じ <code>llama-cli</code> でも、中で読む .so が違う」という意味。</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 320" role="img" aria-label="4つのGPUバックエンドと対応ベンダ">
+        <text x="360" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#1c1915">llama-cli（同じコマンド）</text>
+        <rect x="250" y="40" width="220" height="36" rx="8" fill="#ecfdf5" stroke="#0f766e" stroke-width="2"/>
+        <text x="360" y="63" text-anchor="middle" font-size="13" fill="#115e59">-ngl / -m / -c</text>
+        <path d="M360 76 V100" stroke="#78716c" stroke-width="2"/>
+        <path d="M90 100 H630" stroke="#78716c" stroke-width="2"/>
+        <path d="M90 100 V120" stroke="#78716c" stroke-width="2"/>
+        <path d="M270 100 V120" stroke="#78716c" stroke-width="2"/>
+        <path d="M450 100 V120" stroke="#78716c" stroke-width="2"/>
+        <path d="M630 100 V120" stroke="#78716c" stroke-width="2"/>
+        <rect x="20" y="120" width="140" height="88" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+        <text x="90" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">CUDA</text>
+        <text x="90" y="168" text-anchor="middle" font-size="11" fill="#1e40af">NVIDIA 専用</text>
+        <text x="90" y="188" text-anchor="middle" font-size="11" fill="#166534">この PC の本命</text>
+        <rect x="200" y="120" width="140" height="88" rx="8" fill="#f5f5f4" stroke="#78716c"/>
+        <text x="270" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#44403c">Vulkan</text>
+        <text x="270" y="168" text-anchor="middle" font-size="11" fill="#57534e">ベンダ横断 API</text>
+        <text x="270" y="188" text-anchor="middle" font-size="11" fill="#9a3412">WSL では 0 件</text>
+        <rect x="380" y="120" width="140" height="88" rx="8" fill="#f5f5f4" stroke="#78716c"/>
+        <text x="450" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#44403c">ROCm</text>
+        <text x="450" y="168" text-anchor="middle" font-size="11" fill="#57534e">AMD 向け</text>
+        <text x="450" y="188" text-anchor="middle" font-size="11" fill="#57534e">Radeon 用</text>
+        <rect x="560" y="120" width="140" height="88" rx="8" fill="#f5f5f4" stroke="#78716c"/>
+        <text x="630" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#44403c">SYCL</text>
+        <text x="630" y="168" text-anchor="middle" font-size="11" fill="#57534e">C++ 抽象</text>
+        <text x="630" y="188" text-anchor="middle" font-size="11" fill="#57534e">Intel が多い</text>
+        <rect x="20" y="228" width="140" height="70" rx="8" fill="#1d4ed8"/>
+        <text x="90" y="258" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">RTX 5060</text>
+        <text x="90" y="278" text-anchor="middle" font-size="11" fill="#dbeafe">NVIDIA</text>
+        <rect x="200" y="228" width="140" height="70" rx="8" fill="#e7e5e4"/>
+        <text x="270" y="258" text-anchor="middle" font-size="12" fill="#44403c">ICD が必要</text>
+        <text x="270" y="278" text-anchor="middle" font-size="11" fill="#78716c">NVIDIA 用が無い</text>
+        <rect x="380" y="228" width="140" height="70" rx="8" fill="#e7e5e4"/>
+        <text x="450" y="258" text-anchor="middle" font-size="12" fill="#44403c">この PC に無い</text>
+        <text x="450" y="278" text-anchor="middle" font-size="11" fill="#78716c">AMD GPU ではない</text>
+        <rect x="560" y="228" width="140" height="70" rx="8" fill="#e7e5e4"/>
+        <text x="630" y="258" text-anchor="middle" font-size="12" fill="#44403c">今回使わない</text>
+        <text x="630" y="278" text-anchor="middle" font-size="11" fill="#78716c">iGPU も対象外</text>
+      </svg>
+      <figcaption>道が違うだけで、やりたいことは同じ（層の計算を GPU に置く）。この PC は CUDA 一択。</figcaption>
+    </figure>
+
+    <h3>Vulkan</h3>
+    <p><strong>Vulkan</strong> は Khronos という業界団体の、GPU 向け低レベル API である。NVIDIA / AMD / Intel が実装を出せる「共通の差し込み口」。グラフィックスで有名だが、計算にも使える。llama.cpp の Ubuntu Vulkan ビルドは <code>libggml-vulkan.so</code> を同梱する。</p>
+    <p>実際に GPU を使うには、OS 側にそのベンダの <strong>ICD</strong>（Installable Client Driver。Vulkan の実装ファイル）が要る。フェーズ 3 で <code>--list-devices</code> が空だった理由は、WSL に NVIDIA の Vulkan ICD が無く、intel/radeon/nouveau の json だけがあったから。CUDA の <code>libcuda.so</code> があることと、Vulkan が見えることは別。</p>
+
+    <h3>ROCm</h3>
+    <p><strong>ROCm</strong> は AMD の GPU 計算スタックで、CUDA に相当する位置づけ。Radeon 向け。この PC の計算 GPU は GeForce なので、ROCm ビルドを入れても RTX 5060 は加速しない。</p>
+
+    <h3>SYCL</h3>
+    <p><strong>SYCL</strong> は Khronos の C++ 向け抽象で、「同じコードから複数のアクセラレータを狙う」ためのもの。Intel の oneAPI 経由でよく使われる。llama.cpp の SYCL ビルドは主に Intel GPU 向けの選択肢。この検証の主戦力ではない。</p>
+
+    <table>
+      <thead>
+        <tr><th>名前</th><th>一言</th><th>誰の GPU</th><th>この検証</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CUDA</td><td>NVIDIA の計算 API</td><td>GeForce / RTX</td><td>採用。80 tok/s</td></tr>
+        <tr><td>Vulkan</td><td>ベンダ横断の GPU API</td><td>ICD があるもの</td><td>公式バイナリはデバイス 0 件</td></tr>
+        <tr><td>ROCm</td><td>AMD の計算スタック</td><td>Radeon</td><td>対象外</td></tr>
+        <tr><td>SYCL</td><td>C++ からの抽象</td><td>Intel が多い</td><td>対象外</td></tr>
+        <tr><td>CPU</td><td>バックエンドなし / <code>-ngl 0</code></td><td>（GPU を使わない）</td><td>比較用。6.4 tok/s</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="ngl">6. <code>-ngl</code> とは</h2>
+    <p>LLM の本体は Transformer で、同じ塊（<strong>層 / layer</strong>）が何十段も積み上がっている。7B 級なら数十層。各層は巨大な行列乗算なので、VRAM に置けるなら GPU でやる方が速い。</p>
+    <p><code>-ngl</code>（n GPU layers）は <strong>そのうち何層を GPU（VRAM）に置くか</strong> の整数。残りは CPU とホスト RAM。</p>
+    <ul>
+      <li><code>-ngl 0</code> … 全層 CPU。GPU は（ほぼ）使わない</li>
+      <li><code>-ngl 99</code> … 層数が 99 未満なら実質すべて。よく使う「全部載せ」</li>
+      <li>中途半端な数 … 8GB に全載せできない大きなモデルで、入る分だけ GPU、残り CPU（この検証の 7B Q4 では不要）</li>
+    </ul>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 720 260" role="img" aria-label="ngl 0 と ngl 99 で層の置き場が変わる">
+        <text x="170" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#44403c">-ngl 0（CPU のみ）</text>
+        <rect x="50" y="44" width="240" height="28" rx="4" fill="#57534e"/>
+        <text x="170" y="63" text-anchor="middle" font-size="12" fill="#fff">層 1 … CPU</text>
+        <rect x="50" y="78" width="240" height="28" rx="4" fill="#57534e"/>
+        <text x="170" y="97" text-anchor="middle" font-size="12" fill="#fff">層 2 … CPU</text>
+        <rect x="50" y="112" width="240" height="28" rx="4" fill="#57534e"/>
+        <text x="170" y="131" text-anchor="middle" font-size="12" fill="#fff">…</text>
+        <rect x="50" y="146" width="240" height="28" rx="4" fill="#57534e"/>
+        <text x="170" y="165" text-anchor="middle" font-size="12" fill="#fff">層 N … CPU</text>
+        <text x="170" y="196" text-anchor="middle" font-size="12" fill="#9a3412">実測 Generation 6.4 t/s</text>
+        <text x="170" y="216" text-anchor="middle" font-size="11" fill="#57534e">VRAM ほぼ空（310 MiB）</text>
+
+        <text x="550" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">-ngl 99（実質全 GPU）</text>
+        <rect x="430" y="44" width="240" height="28" rx="4" fill="#1d4ed8"/>
+        <text x="550" y="63" text-anchor="middle" font-size="12" fill="#fff">層 1 … VRAM</text>
+        <rect x="430" y="78" width="240" height="28" rx="4" fill="#1d4ed8"/>
+        <text x="550" y="97" text-anchor="middle" font-size="12" fill="#fff">層 2 … VRAM</text>
+        <rect x="430" y="112" width="240" height="28" rx="4" fill="#1d4ed8"/>
+        <text x="550" y="131" text-anchor="middle" font-size="12" fill="#fff">…</text>
+        <rect x="430" y="146" width="240" height="28" rx="4" fill="#1d4ed8"/>
+        <text x="550" y="165" text-anchor="middle" font-size="12" fill="#fff">層 N … VRAM</text>
+        <text x="550" y="196" text-anchor="middle" font-size="12" fill="#166534">実測 Generation 80.0 t/s</text>
+        <text x="550" y="216" text-anchor="middle" font-size="11" fill="#1e40af">VRAM 4544 MiB / 8GB</text>
+      </svg>
+      <figcaption>同じ GGUF・同じプロンプト。変えたのは <code>-ngl</code> だけ。これが「GPU を使っている」の証明。</figcaption>
+    </figure>
+
+    <p>Ollama の <code>PROCESSOR 100% GPU</code> は、中でこれに近い全載せをしている、と読んでよい。ただし Ollama では <code>-ngl</code> を自分で数字指定しにくい。フェーズ 3 の目的は、その数字を手で動かして速度差を見ることだった。</p>
+    <p>隣のレバー <code>-c</code>（コンテキスト長）は層の置き場ではなく、<strong>何トークン分の過去を残すか</strong>。残すのが KV cache で、長いほど VRAM が増える。実測では <code>-c 2048</code> で 4544 MiB、<code>8192</code> で 4886 MiB。</p>
+
+    <h2 id="this-run">7. この検証で組んだ形（まとめ）</h2>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 340" role="img" aria-label="フェーズ3の実体パス">
+        <rect x="20" y="16" width="680" height="50" rx="8" fill="#ecfdf5" stroke="#0f766e"/>
+        <text x="36" y="36" font-size="12" font-weight="700" fill="#115e59">1. プログラム</text>
+        <text x="36" y="54" font-size="12" font-family="ui-monospace,monospace" fill="#134e4a">~/opt/llama.cpp/llama-b10938/llama-cli</text>
+        <rect x="20" y="80" width="680" height="70" rx="8" fill="#fff7ed" stroke="#c2410c"/>
+        <text x="36" y="102" font-size="12" font-weight="700" fill="#9a3412">2. CUDA 用 .so（Ollama から借用）</text>
+        <text x="36" y="122" font-size="12" font-family="ui-monospace,monospace" fill="#7c2d12">symlink → /usr/local/lib/ollama/cuda_v13/libggml-cuda.so</text>
+        <text x="36" y="140" font-size="11" fill="#9a3412">公式 Linux CUDA zip は無かった。Toolkit も未導入</text>
+        <rect x="20" y="164" width="680" height="50" rx="8" fill="#eff6ff" stroke="#1d4ed8"/>
+        <text x="36" y="184" font-size="12" font-weight="700" fill="#1e3a8a">3. ドライバ（Windows + WSL）</text>
+        <text x="36" y="202" font-size="12" font-family="ui-monospace,monospace" fill="#1e40af">/usr/lib/wsl/lib/libcuda.so → RTX 5060</text>
+        <rect x="20" y="228" width="680" height="50" rx="8" fill="#f5f5f4" stroke="#78716c"/>
+        <text x="36" y="248" font-size="12" font-weight="700" fill="#44403c">4. モデル（データ）</text>
+        <text x="36" y="266" font-size="12" font-family="ui-monospace,monospace" fill="#44403c">~/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf</text>
+        <rect x="20" y="292" width="680" height="36" rx="8" fill="#1d4ed8"/>
+        <text x="360" y="315" text-anchor="middle" font-size="13" fill="#fff">-ngl 99 で層を VRAM へ → Generation 80 tok/s</text>
+      </svg>
+      <figcaption>上から「誰が計算するか」→「どの道で GPU へ」→「何を考えるか」。</figcaption>
+    </figure>
+
+    <p>見る場所の対応:</p>
+    <table>
+      <thead>
+        <tr><th>疑問</th><th>見るもの</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>エンジンは入ったか</td><td><code>llama-cli --version</code> / ヘルプが出る</td></tr>
+        <tr><td>CUDA の道は繋がったか</td><td><code>--list-devices</code> に CUDA0</td></tr>
+        <tr><td>モデルは別ファイルか</td><td><code>-m ~/models/....gguf</code> の実在</td></tr>
+        <tr><td>本当に GPU か</td><td><code>-ngl 99</code> と <code>-ngl 0</code> の Generation token/s の差</td></tr>
+        <tr><td>VRAM は重み＋αか</td><td>生成中の nvidia-smi。<code>-c</code> を伸ばすと増える分が KV cache</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      関連: <a href="pipeline.md">pipeline.md</a>（トークン化） /
+      <a href="../results/03-llamacpp.md">results/03-llamacpp.md</a>（コマンドと数値） /
+      <a href="../phases/03-llamacpp.md">phases/03-llamacpp.md</a>（手順）
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # フェーズ 3: llama.cpp で中身を可視化する
 
-Ollama が隠しているパラメータを、同じクラスの GGUF で直接見る。学習の本番。
+Ollama が隠しているパラメータを、同じクラスの GGUF で直接見る。学習の本番。用語（llama.cpp / CUDA / `-ngl` / `~/opt` とモデル / Vulkan・ROCm・SYCL / `.so`）は図解ノート [`../notes/learn-gpu-stack.html`](../notes/learn-gpu-stack.html)。
 
 - 依存: フェーズ 2（GPU パスが生きていること）。フェーズ 0 の cmake
 - GPU: 必須
@@ -115,13 +115,20 @@ llama-cli -m ~/models/<同じ>.gguf -ngl 99 -c 2048 -n 64 --no-mmap \
 
 ## 合格条件
 
-- [ ] llama.cpp 系バイナリが CUDA で RTX 5060 を認識する
-- [ ] 7B Q4（無理なら 4B）で `-ngl 99` が通る
-- [ ] `-ngl 0` より GPU 実行が明確に速い
-- [ ] prompt eval と generation の token/s を記録した
-- [ ] コンテキストと VRAM の関係を 1 つ以上記録した（または VRAM 不足で省略した理由）
-- [ ] [`../PROGRESS.md`](../PROGRESS.md) を更新した
-- [ ] 使ったコマンド全文が [`../results/03-llamacpp.md`](../results/03-llamacpp.md) にある
+- [x] llama.cpp 系バイナリが CUDA で RTX 5060 を認識する
+- [x] 7B Q4（無理なら 4B）で `-ngl 99` が通る
+- [x] `-ngl 0` より GPU 実行が明確に速い
+- [x] prompt eval と generation の token/s を記録した
+- [x] コンテキストと VRAM の関係を 1 つ以上記録した（または VRAM 不足で省略した理由）
+- [x] [`../PROGRESS.md`](../PROGRESS.md) を更新した
+- [x] 使ったコマンド全文が [`../results/03-llamacpp.md`](../results/03-llamacpp.md) にある
+
+実施メモ（2026-09-13）:
+
+- 公式 Linux CUDA バイナリは無い。Ubuntu Vulkan は WSL でデバイス 0 件
+- `llama-cli` b10938 + Ollama 同梱 `libggml-cuda.so`（CUDA Toolkit なし）
+- 7B Q4_K_M: `-ngl 99` Generation 80.0 t/s、`-ngl 0` 6.4 t/s。`-c 2048` VRAM 4544 MiB → `-c 8192` 4886 MiB
+- 詳細: [`../results/03-llamacpp.md`](../results/03-llamacpp.md)
 
 ## 失敗したとき
 

@@ -106,4 +106,4 @@ Transformer の各層は、これまでのトークンの Key / Value を参照�
 - **safetensors**: Hugging Face 上の学習・変換に近い重み。このフェーズの tokenizer 取得元もこの系統
 - **GGUF**: llama.cpp / Ollama が読む実行用。Q4 などはここに入っていることが多い
 
-中身のバイナリ解剖はしない。次フェーズで Ollama / llama.cpp が同じ「token ID → forward → sample」を、GGUF を載せて GPU で回す。
+中身のバイナリ解剖はしない。GPU 側の用語（llama.cpp / CUDA / `-ngl` / `.so`）は [`learn-gpu-stack.html`](learn-gpu-stack.html)。

@@ -6,9 +6,9 @@
 
 ## 現在地
 
-- **フェーズ**: 3（llama.cpp で中身を見る）
+- **フェーズ**: 4（OpenAI 互換 API）
 - **状態**: 未着手
-- **次に開くファイル**: [`phases/03-llamacpp.md`](phases/03-llamacpp.md)
+- **次に開くファイル**: [`phases/04-openai-api.md`](phases/04-openai-api.md)
 
 状態の意味: `未着手` / `実施中` / `ブロック` / `完了`
 
@@ -20,7 +20,7 @@
 | 0 | WSL 土台 | 完了 | [`phases/00-wsl-env.md`](phases/00-wsl-env.md) |
 | 1 | トークン化とパイプライン | 完了 | [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md) |
 | 2 | Ollama で GPU 確認 | 完了 | [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md) |
-| 3 | llama.cpp で中身を見る | 未着手 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
+| 3 | llama.cpp で中身を見る | 完了 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
 | 4 | OpenAI 互換 API | 未着手 | [`phases/04-openai-api.md`](phases/04-openai-api.md) |
 | 5 | 計測と比較 | 未着手 | [`phases/05-benchmark.md`](phases/05-benchmark.md) |
 | 6 | Cursor からの実行 | 未着手 | [`phases/06-cursor.md`](phases/06-cursor.md) |
@@ -51,3 +51,5 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 2026-09-13 | 1 | Qwen2.5-7B-Instruct の tokenizer のみ。日本語 14→43 / 英語 13→42 トークン。`notes/pipeline.md` と `scripts/tokenize_demo.py`。GPU・GGUF なし |
 | 2026-09-13 | 2 | Ollama 0.34.0（install.sh + zstd）。`gemma3:4b` と `qwen2.5:7b-instruct` が 100% GPU。7B は VRAM 4658 MiB / 8GB。decode 約 40 / 68 tok/s。`results/02-ollama.md` |
 | 2026-09-13 | ルール | `.cursor/rules/explain-work.mdc`（なぜやるかと実コマンドを厚く）。フェーズ 3 手順も同じ粒度に更新 |
+| 2026-09-13 | 3 | llama-cli b10938 + Ollama の CUDA so。Linux CUDA 公式バイナリなし。7B `-ngl 99` 80 tok/s vs `-ngl 0` 6.4。`-c` 2048→8192 で VRAM 4544→4886 MiB。`results/03-llamacpp.md` |
+| 2026-09-13 | 学習 | GPU 用語の図解 HTML: [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html) |

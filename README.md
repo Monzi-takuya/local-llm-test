@@ -19,7 +19,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 | [`PROGRESS.md`](PROGRESS.md) | 進行管理の正本 |
 | [`docs/environment.md`](docs/environment.md) | 実測スペックと制約 |
 | [`phases/`](phases/) | フェーズごとの手順・合格条件 |
-| [`notes/`](notes/) | 学習ノート（フェーズ 1 で `pipeline.md` を追加） |
+| [`notes/`](notes/) | 学習ノート。フェーズ 1 の [`notes/pipeline.md`](notes/pipeline.md)、フェーズ 3 用語の図解 [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html) |
 | [`scripts/`](scripts/) | 検証スクリプト（各フェーズの成果物） |
 | [`results/`](results/) | 計測メモ・ログ |
 | [`sample.wslconfig`](sample.wslconfig) | WSL 設定のリポジトリ側正本（適用先は `%UserProfile%\.wslconfig`） |
