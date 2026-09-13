@@ -10,6 +10,6 @@
 | [03-llamacpp.md](03-llamacpp.md) | ngl・コンテキスト・timings を可視化する | 必須 | llama.cpp 実行メモ |
 | [04-openai-api.md](04-openai-api.md) | アプリから叩ける HTTP にする | 必須 | `scripts/chat_client.py` |
 | [05-benchmark.md](05-benchmark.md) | サイズ・量子化・コンテキストを比較する | 必須 | `results/` の計測メモ |
-| [06-cursor.md](06-cursor.md) | Cursor からの実行範囲を確定する | ターミナル | 期待値メモ。Chat BYOK は任意 |
+| [06-cursor.md](06-cursor.md) | Cursor からの実行範囲（本筋は WSL ターミナル。2026-09-13 キャンセル） | ターミナル | [`../results/06-cursor.md`](../results/06-cursor.md) |
 
 実行ルールは [`../PROGRESS.md`](../PROGRESS.md)。スペックは [`../docs/environment.md`](../docs/environment.md)。

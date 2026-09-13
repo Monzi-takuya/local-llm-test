@@ -1,0 +1,57 @@
+=== meta ===
+date: 2026-09-13T21:28:25+09:00
+tag: 4b-q4-ngl99-c2048-warmup
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/gemma-3-4b-it-Q4_K_M.gguf
+ngl: 99
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/05-prompt-ja.txt
+ram_before: 1.9Gi used / 15Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/gemma-3-4b-it-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> WSLからローカルLLMを動かしたい理由を一文で。
+WSLからローカルLLMを動かすことで、インターネット接続に依存せず、プライバシーを保護しながら、オフライン環境でもLLMの利用や実験が可能になります。
+
+[ Prompt: 241.5 t/s | Generation: 108.7 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+2.0Gi used / 15Gi
+
+=== watch ===
+vram_max_mib 2790
+util_max_pct 85
+vram_samples 9

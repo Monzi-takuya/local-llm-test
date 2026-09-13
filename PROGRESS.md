@@ -6,11 +6,11 @@
 
 ## 現在地
 
-- **フェーズ**: 5（計測と比較）
-- **状態**: 未着手
-- **次に開くファイル**: [`phases/05-benchmark.md`](phases/05-benchmark.md)
+- **フェーズ**: 計画どおりの検証はここまで（0–5 完了、6 はキャンセル）
+- **状態**: 完了
+- **次に開くファイル**: なし。追加実験は新しい `phases/` を切ってから
 
-状態の意味: `未着手` / `実施中` / `ブロック` / `完了`
+状態の意味: `未着手` / `実施中` / `ブロック` / `完了` / `キャンセル`
 
 ## フェーズ一覧
 
@@ -22,8 +22,8 @@
 | 2 | Ollama で GPU 確認 | 完了 | [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md) |
 | 3 | llama.cpp で中身を見る | 完了 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
 | 4 | OpenAI 互換 API | 完了 | [`phases/04-openai-api.md`](phases/04-openai-api.md) |
-| 5 | 計測と比較 | 未着手 | [`phases/05-benchmark.md`](phases/05-benchmark.md) |
-| 6 | Cursor からの実行 | 未着手 | [`phases/06-cursor.md`](phases/06-cursor.md) |
+| 5 | 計測と比較 | 完了 | [`phases/05-benchmark.md`](phases/05-benchmark.md) |
+| 6 | Cursor からの実行 | キャンセル | [`phases/06-cursor.md`](phases/06-cursor.md) |
 
 依存: 0 → 1 は GPU 不要で並列に見えるが、Python 3.12 は 0 で用意する。2 は 0 の後。3 は 2 の後が安全。4 は 2 か 3 の後。5 は 3（または 2）の後。6 は 4 の後。
 
@@ -54,3 +54,5 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 2026-09-13 | 3 | llama-cli b10938 + Ollama の CUDA so。Linux CUDA 公式バイナリなし。7B `-ngl 99` 80 tok/s vs `-ngl 0` 6.4。`-c` 2048→8192 で VRAM 4544→4886 MiB。`results/03-llamacpp.md` |
 | 2026-09-13 | 学習 | GPU 用語の図解 HTML: [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html) |
 | 2026-09-13 | 4 | llama-server `127.0.0.1:8080`。`/v1/chat/completions` 非ストリーム + SSE。Windows localhost 到達。`scripts/chat_client.py`（openai 3.13 / 3.12）。Ollama `/v1` は任意確認。`results/04-api.md` |
+| 2026-09-13 | 5 | 固定 2 プロンプト・temp 0・n 128。4B vs 7B、Q4 vs Q5（5204 MiB、ja 崩れ）、GPU 78 vs CPU 6 tok/s、c 2048 vs 8192 は VRAM +342。`results/05-bench.md` / [`notes/learn-quantization.html`](notes/learn-quantization.html) |
+| 2026-09-13 | 6 | キャンセル。本筋は Cursor の WSL ターミナルからの実行で、フェーズ 2–5 で確認済み。Chat BYOK / トンネルは未実施。`results/06-cursor.md` |

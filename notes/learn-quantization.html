@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>量子化（Q4 / Q5）— 学習ノート</title>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --paper: #fffdf8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d0c0;
+      --accent: #0f6b5c;
+      --accent-2: #b45309;
+      --gpu: #1d4ed8;
+      --ok: #166534;
+      --warn: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    header.hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.5rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.35; }
+    h2 {
+      font-size: 1.25rem;
+      margin: 2.2rem 0 0.7rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
+    .lead { font-size: 1.02rem; }
+    .muted { color: var(--muted); }
+    nav.toc {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    nav.toc ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+    nav.toc a { color: var(--accent); }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef7f4;
+      padding: 0.8rem 1rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1rem 0;
+    }
+    .warn { border-left-color: var(--accent-2); background: #fff7ed; }
+    .machine { border-left-color: var(--gpu); background: #eff6ff; }
+    figure.diagram {
+      margin: 1.1rem 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem 0.6rem 0.4rem;
+      overflow-x: auto;
+    }
+    figcaption {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0.2rem 0 0.6rem;
+    }
+    svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", "Noto Sans Mono", monospace;
+      font-size: 0.86em;
+      background: #efe8da;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #efe8da; }
+    footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>量子化は何をしているか</h1>
+      <p class="lead">答えの文章を圧縮しているのではない。<strong>重み</strong>（モデルが覚えた数値の行列）を、少ない bit で近似して VRAM に載せている。フェーズ 5 の Q4 vs Q5 はこの話の実測。</p>
+      <p class="muted">このマシン: RTX 5060 8GB。実測は <code>results/05-bench.md</code>。</p>
+    </header>
+
+    <nav class="toc" aria-label="目次">
+      <strong>目次</strong>
+      <ol>
+        <li><a href="#what">何を量子化するか</a></li>
+        <li><a href="#bytes">なぜ 7B の FP16 は 14GB か</a></li>
+        <li><a href="#affine">ブロックごとの近似（scale + 整数）</a></li>
+        <li><a href="#kquant">Q4_K_M / Q5_K_M の中身</a></li>
+        <li><a href="#runtime">推論時は「戻して掛ける」</a></li>
+        <li><a href="#not">量子化しないもの</a></li>
+        <li><a href="#quality">品質が落ちる場所</a></li>
+        <li><a href="#this-run">この検証の数字</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="what">1. 何を量子化するか</h2>
+    <p><strong>重み</strong>（weight）は、Transformer の各層にある大きな数値の表である。学習の結果として固定され、推論ではほぼ読み取り専用。トークンを 1 個進めるたびに、この表と入力のベクトルを掛け合わせる。</p>
+    <p>量子化（quantization）は、その表の各数値を「少ない bit の整数 + 小さな補正」で表す変換である。JPEG のように生成文を潰す処理ではない。tokenizer の語彙 ID も変えない。</p>
+    <div class="callout warn">
+      混同しないこと: <code>temperature</code> は次トークンの選び方。<code>Q4</code> は重みの保存形式。両方とも「雑になる」方向に見えるが、層が違う。温度は毎回のサンプル、量子化はファイルに焼き付いた近似。
+    </div>
+
+    <h2 id="bytes">2. なぜ 7B の FP16 は 14GB か</h2>
+    <p><strong>パラメータ数</strong>は重みの個数。Qwen2.5-7B は約 7.6×10<sup>9</sup> 個（フェーズ 4 の <code>/v1/models</code> では <code>n_params</code> 7615616512）。</p>
+    <p>1 個を何バイトで持つかが、だいたいのファイルサイズになる。</p>
+    <table>
+      <thead>
+        <tr><th>形式</th><th>1 重み</th><th>7.6B の概算</th><th>8GB GPU</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>FP32</td><td>4 バイト</td><td>≈ 30 GB</td><td>載らない</td></tr>
+        <tr><td>FP16 / BF16</td><td>2 バイト</td><td>≈ 15 GB</td><td>載らない</td></tr>
+        <tr><td>Q8_0（約 8bit）</td><td>≈ 1 バイト</td><td>≈ 8 GB</td><td>重みだけで満杯。KV cache が残らない</td></tr>
+        <tr><td>Q5_K_M</td><td>≈ 5.5 bit</td><td>実測ファイル 5.1 GB</td><td>載る（この検証 5204 MiB）</td></tr>
+        <tr><td>Q4_K_M</td><td>≈ 4.5 bit</td><td>実測ファイル 4.4 GB</td><td>載る（この検証 4544 MiB）</td></tr>
+      </tbody>
+    </table>
+    <p>「4bit」は正確に 0.5 バイト/重みではない。後述の <strong>scale</strong>（補正用の小さい浮動小数）と、層によって bit 数を変えるため、Q4_K_M は 4.0 bit より少し重い。</p>
+
+    <h2 id="affine">3. ブロックごとの近似（scale + 整数）</h2>
+    <p>よく使うのは、重みを 32 個くらいの <strong>ブロック</strong>に切り、ブロック内の最大値から <code>scale</code> を 1 つ決める方法である。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 220" width="720" height="220" role="img" aria-label="ブロック量子化">
+        <rect x="12" y="20" width="330" height="180" rx="10" fill="#fff7ed" stroke="#b45309"/>
+        <text x="28" y="48" font-size="14" fill="#9a3412">元の重み（FP16）</text>
+        <text x="28" y="78" font-size="13" fill="#1c1915">[ 0.12, -0.81, 0.04, … ] × 32</text>
+        <text x="28" y="108" font-size="13" fill="#5c564c">連続値。そのまま持つと 32×2B</text>
+        <text x="28" y="148" font-size="13" fill="#1c1915">scale = max(|w|) / 7</text>
+        <text x="28" y="176" font-size="13" fill="#5c564c">このブロック用の物差し（FP16 1 個）</text>
+
+        <rect x="378" y="20" width="330" height="180" rx="10" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="394" y="48" font-size="14" fill="#0f6b5c">量子化後（例: 4bit）</text>
+        <text x="394" y="78" font-size="13" fill="#1c1915">q = round(w / scale) ∈ 0..15</text>
+        <text x="394" y="108" font-size="13" fill="#5c564c">整数だけを並べる。32×4bit = 16B</text>
+        <text x="394" y="148" font-size="13" fill="#1c1915">復元: ŵ = q × scale</text>
+        <text x="394" y="176" font-size="13" fill="#5c564c">元の w とは少しずれる</text>
+      </svg>
+      <figcaption>1 ブロック = 整数の列 + scale。scale が「このブロックの物差し」。</figcaption>
+    </figure>
+    <p>ブロックを跨いで 1 つの scale にすると、大きい値に引っ張られて小さい値が潰れる。だから「全部を 4bit 整数にする」のではなく、<strong>近くの重み同士で物差しを共有</strong>する。</p>
+
+    <h2 id="kquant">4. Q4_K_M / Q5_K_M の中身</h2>
+    <p>llama.cpp の <strong>K-quant</strong> は、上のブロックをもう一段まとめた形式である。</p>
+    <ul>
+      <li><strong>super-block</strong>: 256 個（32×8）をまとめて、scale の持ち方を工夫する</li>
+      <li><strong>Q4_K</strong>: 本体は 4bit 整数。Q5_K は 5bit。残りの bit で誤差を減らす</li>
+      <li><strong>_S / _M / _L</strong>: 同じ「Q4」でも、どの層を厚く残すかが違う。<code>_M</code>（Medium）は注意層や出力付近を少し厚くし、FFN の巨大行列を薄くすることが多い</li>
+    </ul>
+    <p>だからファイル名の <code>Q4_K_M</code> は「全部が均一 4bit」ではない。<strong>混在量子化</strong>（tensor ごとに bit 数が違う）である。埋め込みや出力層は Q6 寄りのまま、巨大な中間層だけ Q4、という配分が典型。</p>
+    <div class="callout">
+      Hugging Face 上の bartowski などの GGUF は、層の重要度（<strong>importance matrix</strong> / imatrix）を測ってから bit を振り分けることがある。同じ「Q4_K_M」でも、誰が作ったファイルかで中の割り当てが少し違う。
+    </div>
+    <p>Q5 は Q4 より整数の段階が細かい（32 段階 → 32 超）。同じ super-block 構造なので、ファイルはだいたい「Q4 + 1bit 分」重くなる。このマシンでは 4.4G → 5.1G。</p>
+
+    <h2 id="runtime">5. 推論時は「戻して掛ける」</h2>
+    <p>VRAM に載っているのは量子化済みの整数 + scale である。計算のたびに FP16 の完全なコピーを作って置き直すのではない。</p>
+    <p>CUDA カーネル（GPU 上の小さなプログラム）が、掛け算の直前にブロック単位で <code>ŵ = q × scale</code> をレジスタに戻し、すぐ行列積に使う。これを <strong>on-the-fly dequant</strong> と呼ぶ。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 150" width="720" height="150" role="img" aria-label="推論時の dequant">
+        <rect x="20" y="40" width="160" height="70" rx="8" fill="#dbeafe" stroke="#1d4ed8"/>
+        <text x="100" y="70" text-anchor="middle" font-size="13">VRAM</text>
+        <text x="100" y="90" text-anchor="middle" font-size="12" fill="#1e3a8a">Q4 のまま</text>
+        <polygon points="190,75 230,75 230,65 270,75 230,85 230,75" fill="#57534e"/>
+        <rect x="280" y="40" width="180" height="70" rx="8" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="370" y="70" text-anchor="middle" font-size="13">カーネル内</text>
+        <text x="370" y="90" text-anchor="middle" font-size="12" fill="#134e4a">dequant → matmul</text>
+        <polygon points="470,75 510,75 510,65 550,75 510,85 510,75" fill="#57534e"/>
+        <rect x="560" y="40" width="140" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="630" y="70" text-anchor="middle" font-size="13">logits</text>
+        <text x="630" y="90" text-anchor="middle" font-size="12" fill="#9a3412">次トークン用</text>
+      </svg>
+      <figcaption>VRAM 帯域が減るので、Q4 は「荒い」だけでなく「読みが軽い」。フェーズ 5 では Q4 の方が Q5 より Generation が速い。</figcaption>
+    </figure>
+    <p>速度の主役は計算コアの理論 FLOPS より、<strong>重みを VRAM から読む帯域</strong>であることが多い。decode（1 トークンずつ）は特にそう。だから bit を増やすと、品質の余地と引き換えに tok/s が落ちうる。</p>
+
+    <h2 id="not">6. 量子化しないもの</h2>
+    <ul>
+      <li><strong>KV cache</strong>: 生成中に溜まる Key/Value。既定では FP16 寄り。コンテキストを伸ばすとここが増える（フェーズ 3/5 の <code>-c 2048 → 8192</code> で +342 MiB）。重みの Q4/Q5 とは別口座</li>
+      <li><strong>活性化</strong>（activation）: 層を進む途中のベクトル。計算の作業領域で、GGUF の Q4 とは別</li>
+      <li><strong>tokenizer</strong>: 語彙とマージ規則。量子化しても ID の意味は同じ</li>
+    </ul>
+    <p>だから「Q4 にしたからコンテキストも 4bit」ではない。8GB の内訳は <strong>重み + KV cache + ランタイム</strong>。</p>
+
+    <h2 id="quality">7. 品質が落ちる場所</h2>
+    <p>復元した <code>ŵ</code> は元の <code>w</code> と少し違う。その誤差が行列積を通り、<strong>logits</strong>（次トークンの生スコア）を少し動かす。</p>
+    <p><code>temperature 0</code>（argmax、最大スコアの ID だけ取る）でも、1 個目のトークンがずれると、その先の文は全部変わる。フェーズ 5 の日本語では、同じ Qwen 7B でも Q4 はきれいな一文、Q5 は英中が混ざった。これは「Q5 が常に悪い」ではなく、<strong>greedy 1 本では誤差の出方がプロンプト依存</strong>という実測である。</p>
+    <p>英語プロンプトでは Q4 と Q5 がほぼ同じ文だった。最初の数トークンの logits が、こちらでは同じ argmax に落ちた。</p>
+    <div class="callout warn">
+      GPU と CPU でも、同じ Q4 ファイル・同じ seed・同じ temp 0 で日本語が一致しなかった。カーネルの加算順で浮動小数の末尾が違い、argmax が割れることがある。品質比較は「同じデバイス・同じ量子化」で揃える。
+    </div>
+
+    <h2 id="this-run">8. この検証の数字</h2>
+    <div class="callout machine">
+      7B Instruct、GPU 全載せ、<code>-c 2048</code>。生成中 VRAM 最大: Q4_K_M <strong>4544 MiB</strong> / Q5_K_M <strong>5204 MiB</strong>。Generation: Q4 約 78 tok/s、Q5 約 69 tok/s。差分は重みの厚さ（帯域）と一致する。8GB（8151 MiB）にはどちらも載った。Q8 は重みだけで余裕が無いので省略。
+    </div>
+    <p>詳細な出力比較は <code>results/05-bench.md</code>。GPU 用語（<code>-ngl</code>、CUDA、.so）は <a href="learn-gpu-stack.html">learn-gpu-stack.html</a>。</p>
+
+    <footer>
+      フェーズ 5 の学習ノート。コードスタイルの話はしない。コマンドの正本は <code>scripts/bench.sh</code>。
+    </footer>
+  </div>
+</body>
+</html>

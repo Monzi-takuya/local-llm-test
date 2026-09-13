@@ -40,7 +40,7 @@
 - cmake 4.1.1 / jq 1.8.1: `~/.local/bin`（`sudo apt` はパスワードが必要だったためユーザ領域に導入）
 - uv 0.12.13、リポジトリの `.venv` は **Python 3.12.14**
 - システム Python は **3.14.4**（学習スクリプトには使わない）
-- `~/models`: `gemma-3-4b-it-Q4_K_M.gguf`（2.4G）、`Qwen2.5-7B-Instruct-Q4_K_M.gguf`（4.4G）
+- `~/models`: `gemma-3-4b-it-Q4_K_M.gguf`（2.4G）、`Qwen2.5-7B-Instruct-Q4_K_M.gguf`（4.4G）、`Qwen2.5-7B-Instruct-Q5_K_M.gguf`（5.1G、フェーズ 5）
 - Ollama **0.34.0**（公式 `install.sh`、systemd `ollama.service`）。展開用に **zstd** 1.5.7 を apt で追加。モデル blob は `/usr/share/ollama`
 - llama.cpp **b10938** の `llama-cli` / `llama-server`（`~/opt/llama.cpp/llama-b10938`）。Linux 公式 CUDA zip は無いため、Ollama 同梱 `libggml-cuda.so` を symlink。CUDA Toolkit（`nvcc`）は未導入
 - `.venv` に **openai 3.13.0**（フェーズ 4 の `scripts/chat_client.py`。クラウド OpenAI には未接続）

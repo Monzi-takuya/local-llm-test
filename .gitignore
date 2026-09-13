@@ -19,3 +19,4 @@ models/
 results/*.log
 results/*.jsonl
 results/nvidia-smi*.txt
+results/05-raw/*.csv

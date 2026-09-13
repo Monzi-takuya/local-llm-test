@@ -10,4 +10,5 @@
 | `03-llamacpp.md` | 3 |
 | `04-api.md` | 4 |
 | `05-prompts.md` / `05-bench.md` | 5 |
-| `06-cursor.md` | 6 |
+| `05-raw/` | 5（llama-cli 生ログ。VRAM csv は git 対象外） |
+| `06-cursor.md` | 6（キャンセル記録） |

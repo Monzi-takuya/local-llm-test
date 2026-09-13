@@ -1,0 +1,57 @@
+=== meta ===
+date: 2026-09-13T21:30:57+09:00
+tag: 7b-q5-ngl99-c2048-ja
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen2.5-7B-Instruct-Q5_K_M.gguf
+ngl: 99
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/05-prompt-ja.txt
+ram_before: 2.0Gi used / 15Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen2.5-7B-Instruct-Q5_K_M.gguf
+ftype      : Q5_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> WSLからローカルLLMを動かしたい理由を一文で。
+ローカルLLMをWSLから動かすことで、 EFFICIENTLY ACCESSING LOCAL AI RESOURCES成为可以在本地高效访问AI资源。
+
+[ Prompt: 671.2 t/s | Generation: 69.1 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+2.1Gi used / 15Gi
+
+=== watch ===
+vram_max_mib 5204
+util_max_pct 92
+vram_samples 8
