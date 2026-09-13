@@ -6,9 +6,9 @@
 
 ## 現在地
 
-- **フェーズ**: リポジトリ骨格（フェーズ 0 の手前）
-- **状態**: ドキュメント準備済み。フェーズ 0 の実行は未着手
-- **次に開くファイル**: [`phases/00-wsl-env.md`](phases/00-wsl-env.md)
+- **フェーズ**: 1（トークン化とパイプライン）
+- **状態**: 未着手
+- **次に開くファイル**: [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md)
 
 状態の意味: `未着手` / `実施中` / `ブロック` / `完了`
 
@@ -17,7 +17,7 @@
 | ID | 名前 | 状態 | 詳細 |
 | --- | --- | --- | --- |
 | 骨格 | リポジトリと進行管理 | 完了 | このディレクトリ構成と MD |
-| 0 | WSL 土台 | 未着手 | [`phases/00-wsl-env.md`](phases/00-wsl-env.md) |
+| 0 | WSL 土台 | 完了 | [`phases/00-wsl-env.md`](phases/00-wsl-env.md) |
 | 1 | トークン化とパイプライン | 未着手 | [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md) |
 | 2 | Ollama で GPU 確認 | 未着手 | [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md) |
 | 3 | llama.cpp で中身を見る | 未着手 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
@@ -42,3 +42,5 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 日付 | フェーズ | 内容 |
 | --- | --- | --- |
 | 2026-09-13 | 骨格 | README / PROGRESS / phases / docs / .gitignore を作成。インストールと推論は未実施 |
+| 2026-09-13 | 0 | nvidia-smi で RTX 5060 8GB を確認。RAM 16GB。当初 `.wslconfig` なし。cmake/jq は sudo 不可のため ~/.local。uv で Python 3.12.14 の .venv と ~/models を作成 |
+| 2026-09-13 | 0 追記 | 正しい `%UserProfile%\.wslconfig` を `sample.wslconfig` 相当で作り直し再起動。mirrored 適用を確認（`192.168.40.85`）。GPU・16GB・.venv は維持 |

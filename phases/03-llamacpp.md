@@ -68,7 +68,7 @@ timings（prompt eval / generation）を [`../results/03-llamacpp.md`](../result
 `autoMemoryReclaim=dropcache` による mmap 追い出しを疑う。
 
 - 一度 `--no-mmap` で再実行
-- まだ遅い / Windows が RAM を欲しがっているなら、フェーズ 0 の方針で reclaim を切る実験。設定変更は `sample.wslconfig.txt` に同期
+- まだ遅い / Windows が RAM を欲しがっているなら、フェーズ 0 の方針で reclaim を切る実験。設定変更は `sample.wslconfig` に同期
 
 ## 合格条件
 

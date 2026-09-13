@@ -15,10 +15,10 @@
 ## 前提
 
 - [`../docs/environment.md`](../docs/environment.md) を読む
-- WSL 設定のリポジトリ正本は [`../sample.wslconfig.txt`](../sample.wslconfig.txt)
+- WSL 設定のリポジトリ正本は [`../sample.wslconfig`](../sample.wslconfig)
 - **メモリは 16GB のまま**。OOM が出てから上げる
 
-残す設定: `networkingMode=mirrored`、`localhostForwarding=true`、`systemd=true`、`coreDump=false`、`autoMemoryReclaim=dropcache`
+現行の適用設定: `memory=16GB`、`networkingMode=mirrored`、`maxCrashDumpCount=0`、`[experimental] autoMemoryReclaim=dropcache`。systemd は `/etc/wsl.conf`。`localhostForwarding` は mirrored では不要。
 
 足してよいが必須ではないもの:
 
@@ -95,13 +95,19 @@ df -h ~ /
 
 ## 合格条件
 
-- [ ] 通常ターミナルで `nvidia-smi` が RTX 5060 8 GB を表示する
-- [ ] `free -h` が約 16 GB（上げていない場合）
-- [ ] `cmake` と `curl` と `jq` がある
-- [ ] `.venv` の Python が 3.12
-- [ ] `~/models` がある
-- [ ] [`../results/00-env.txt`](../results/00-env.txt) に記録した
-- [ ] [`../PROGRESS.md`](../PROGRESS.md) を更新した
+- [x] 通常ターミナルで `nvidia-smi` が RTX 5060 8 GB を表示する
+- [x] `free -h` が約 16 GB（上げていない場合）
+- [x] `cmake` と `curl` と `jq` がある
+- [x] `.venv` の Python が 3.12
+- [x] `~/models` がある
+- [x] [`../results/00-env.txt`](../results/00-env.txt) に記録した
+- [x] [`../PROGRESS.md`](../PROGRESS.md) を更新した
+
+実施メモ（2026-09-13）:
+
+- `sudo apt` は対話パスワードが必要だったため未実行。`build-essential` / `curl` / `git` は既存。`cmake` と `jq` は `~/.local` に公式バイナリを入れた
+- 当初 `%UserProfile%\.wslconfig` は無く、`.wslconfig.txt` は無視されていた
+- 2026-09-13 再作成・再起動後: 公式 `.wslconfig` が `sample.wslconfig` と一致。mirrored を `192.168.40.85` で確認。RAM 約 16GB、GPU プロセスなし
 
 ## 失敗したとき
 
@@ -116,7 +122,7 @@ df -h ~ /
 
 - `.venv/`（git 対象外）
 - `results/00-env.txt`
-- 必要なら `sample.wslconfig.txt` へのコメント追記のみ
+- 必要なら `sample.wslconfig` へのコメント追記のみ
 
 ## 次
 

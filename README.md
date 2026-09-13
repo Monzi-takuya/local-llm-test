@@ -22,14 +22,14 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 | [`notes/`](notes/) | 学習ノート（フェーズ 1 で `pipeline.md` を追加） |
 | [`scripts/`](scripts/) | 検証スクリプト（各フェーズの成果物） |
 | [`results/`](results/) | 計測メモ・ログ |
-| [`sample.wslconfig.txt`](sample.wslconfig.txt) | WSL 設定のリポジトリ側正本 |
+| [`sample.wslconfig`](sample.wslconfig) | WSL 設定のリポジトリ側正本（適用先は `%UserProfile%\.wslconfig`） |
 
 モデル本体は git に入れない。置き場所は WSL の ext4（推奨: `~/models`）。
 
 ## このマシンでの前提
 
 - RTX 5060 **8 GB**（Blackwell）
-- WSL RAM **16 GB**（`sample.wslconfig.txt`）
+- WSL RAM **16 GB**（`sample.wslconfig` / mirrored 適用済み）
 - 学習用 Python は **3.12**（システムの 3.14 は使わない）
 - Cursor Agent のサンドボックスでは GPU が使えない。推論は通常ターミナルで行う
 

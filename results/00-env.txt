@@ -1,0 +1,101 @@
+=== date ===
+Sun Sep 13 16:35:22 JST 2026
+
+=== uname ===
+Linux monziPC 6.18.33.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026 x86_64 GNU/Linux
+
+=== os-release ===
+PRETTY_NAME="Ubuntu 26.04 LTS"
+VERSION_ID="26.04"
+
+=== free ===
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       1.9Gi        13Gi       3.6Mi       701Mi        13Gi
+Swap:          4.0Gi          0B       4.0Gi
+
+=== nproc ===
+20
+
+=== nvidia-smi ===
+Sun Sep 13 16:35:24 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 610.47.03              KMD Version: 610.60        CUDA UMD Version: 13.3     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5060        On  |   00000000:01:00.0 Off |                  N/A |
+| 30%   30C    P0             30W /  145W |       0MiB /   8151MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+=== /dev/dxg ===
+crw-rw-rw- 1 root root 10, 258 Sep 13 15:58 /dev/dxg
+
+=== python3 ===
+Python 3.14.4
+
+=== which (before install) ===
+nvcc: not found
+cmake: not found
+ollama: not found
+llama-cli: not found
+/usr/bin/curl
+jq: not found
+/usr/bin/git
+uv: not found
+
+=== Windows .wslconfig existence ===
+MISSING: /mnt/c/Users/kuos1/.wslconfig
+
+=== after phase 0 install ===
+Sun Sep 13 16:36:38 JST 2026
+cmake: /home/kuos1/.local/bin/cmake (cmake version 4.1.1)
+jq: /home/kuos1/.local/bin/jq (jq-1.8.1)
+curl: /usr/bin/curl
+uv: /home/kuos1/.local/bin/uv (uv 0.12.13 (x86_64-unknown-linux-gnu))
+venv python: Python 3.12.14
+system python3: Python 3.14.4
+models dir: drwxr-xr-x 2 kuos1 kuos1 4096 Sep 13 16:36 /home/kuos1/models
+sudo apt: skipped (interactive password required). cmake/jq installed to ~/.local instead of apt.
+Windows .wslconfig: MISSING (did not copy sample; memory stays ~16GB)
+GPU processes: none (nvidia-smi at start of phase 0)
+
+=== after .wslconfig recreate + restart ===
+Sun Sep 13 16:47:42 JST 2026
+official .wslconfig: EXISTS -rwxrwxrwx 1 kuos1 kuos1 446 Sep 13 16:44 /mnt/c/Users/kuos1/.wslconfig
+.wslconfig.txt: ls: cannot access '/mnt/c/Users/kuos1/.wslconfig.txt': No such file or directory
+
+--- .wslconfig ---
+[wsl2]
+# 1. メモリの上限設定
+memory=16GB
+
+# 2. ネットワークモード（ミラー化）
+# ※ networkingMode=mirrored を使う場合、localhostForwarding は不要です
+networkingMode=mirrored
+
+# 3. クラッシュダンプの上限数（0に設定すると生成を抑制できます）
+maxCrashDumpCount=0
+
+[experimental]
+# 4. メモリの自動解放（dropcache / gradual / disabled）
+autoMemoryReclaim=dropcache
+MemTotal: 
+nproc: 20
+primary IPv4: eth2             UP             192.168.40.85/24 
+default route: default via 192.168.40.1 dev eth2 proto kernel metric 25 
+GPU: NVIDIA GeForce RTX 5060, 8151 MiB
+venv: Python 3.12.14
+mirrored evidence: LAN IP on eth2 (was NAT 172.26.x before restart)
+MemTotal (fix): 
+MemTotal (Gi): 15.6

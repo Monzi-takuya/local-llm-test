@@ -1,0 +1,14 @@
+[wsl2]
+# 1. メモリの上限設定
+memory=16GB
+
+# 2. ネットワークモード（ミラー化）
+# ※ networkingMode=mirrored を使う場合、localhostForwarding は不要です
+networkingMode=mirrored
+
+# 3. クラッシュダンプの上限数（0に設定すると生成を抑制できます）
+maxCrashDumpCount=0
+
+[experimental]
+# 4. メモリの自動解放（dropcache / gradual / disabled）
+autoMemoryReclaim=dropcache

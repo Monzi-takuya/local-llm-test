@@ -24,22 +24,25 @@
 | Linux ディスク | `/` 約 1 TB 空き |
 | GPU パススルー | `/dev/dxg` あり。通常ターミナルでは `nvidia-smi` 成功 |
 
-設定の正本はリポジトリの [`../sample.wslconfig.txt`](../sample.wslconfig.txt)。Windows への適用先は `%UserProfile%\.wslconfig`。変更後は `wsl --shutdown` が必要。
+設定の正本はリポジトリの [`../sample.wslconfig`](../sample.wslconfig)。Windows への適用先は `%UserProfile%\.wslconfig`（拡張子なし）。変更後は `wsl --shutdown` が必要。
 
-現行の要点:
+2026-09-13 再起動後の要点（適用済み）:
 
-- `memory=16GB`
-- `autoMemoryReclaim=dropcache`
-- `networkingMode=mirrored`
-- `localhostForwarding=true`
-- `coreDump=false`
-- `processors` / `swap` は未指定
+- `memory=16GB`（実測 Mem total 約 15Gi）
+- `networkingMode=mirrored`（実測: NAT の `172.26.x` ではなく、LAN の `192.168.40.85` が `eth2` に載っている）
+- `maxCrashDumpCount=0`
+- `[experimental] autoMemoryReclaim=dropcache`
+- `localhostForwarding` / `coreDump` / `[boot] systemd` は `.wslconfig` に無い。systemd は WSL 内 `/etc/wsl.conf`
+- `processors` / `swap` は未指定（実測 CPU 20、swap 4GB）
 
-## ソフトウェア（計画開始時）
+## ソフトウェア（フェーズ 0 完了後）
 
-未導入: CUDA Toolkit（`nvcc` なし）、cmake、Ollama、llama.cpp。
-
-システム Python は **3.14**。学習用スクリプトは **Python 3.12** を `uv` で別途使う。
+- cmake 4.1.1 / jq 1.8.1: `~/.local/bin`（`sudo apt` はパスワードが必要だったためユーザ領域に導入）
+- uv 0.12.13、リポジトリの `.venv` は **Python 3.12.14**
+- システム Python は **3.14.4**（学習スクリプトには使わない）
+- `~/models` 作成済み（空）
+- 未導入: CUDA Toolkit（`nvcc` なし）、Ollama、llama.cpp
+- Windows `%UserProfile%\.wslconfig`: **作成済み**（2026-09-13 16:44）。中身は `sample.wslconfig` と一致。以前の `.wslconfig.txt` は使われないため削除済み
 
 ## 守る制約
 
