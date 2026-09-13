@@ -11,8 +11,11 @@ alwaysApply: true
 
 - 日本語。`temperature` / `logits` / `BPE` / `KV cache` などは英語のまま
 - 短い結論 → なぜそうか → 実測か混同ポイント。コードスタイルの説教はしない
+- 作業の手順・報告は `.cursor/rules/explain-work.mdc`（なぜ + 実コマンド。冗長でよい）
 
-省略してよい: HTTP、JSON、npm、クラウド入門、一般的な CLI。
+省略してよい: HTTP、JSON、npm、クラウド入門、一般的な CLI の解説。
+
+省略しない: この検証で実際に打つコマンド。
 
 厚くする: LLM 固有の用語、混同点（Word2vec vs BPE、KV cache vs HTTP cache）、このマシンの制約（8GB VRAM、Q4）。
 

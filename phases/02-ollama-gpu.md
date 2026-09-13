@@ -79,12 +79,20 @@ Ollama の blob は Linux ホーム配下に溜まる。`/mnt/c` に移さない
 
 ## 合格条件
 
-- [ ] `ollama --version` が通る
-- [ ] 4B 級で日本語 1 往復できた
-- [ ] 生成中に VRAM 使用が増え、GPU-Util が 0% のままではない
-- [ ] 7B Instruct が 8 GB に載るか、載らない理由を書いた
-- [ ] 速度が「明らかに CPU のみ」ではない（またはその仮説とログがある）
-- [ ] [`../results/02-ollama.md`](../results/02-ollama.md) と [`../PROGRESS.md`](../PROGRESS.md) を更新した
+- [x] `ollama --version` が通る
+- [x] 4B 級で日本語 1 往復できた
+- [x] 生成中に VRAM 使用が増え、GPU-Util が 0% のままではない
+- [x] 7B Instruct が 8 GB に載るか、載らない理由を書いた
+- [x] 速度が「明らかに CPU のみ」ではない（またはその仮説とログがある）
+- [x] [`../results/02-ollama.md`](../results/02-ollama.md) と [`../PROGRESS.md`](../PROGRESS.md) を更新した
+
+実施メモ（2026-09-13）:
+
+- 公式 `install.sh` は展開に zstd が必要。`sudo apt-get install zstd` のあと再実行。Ollama 0.34.0、`ollama.service` active
+- `gemma3:4b` Q4_K_M: 日本語応答、VRAM 約 3764 MiB、decode 約 40 tok/s、`ollama ps` は 100% GPU
+- `qwen2.5:7b-instruct` Q4_K_M: 8GB に載った（4658 MiB）、decode 約 68 tok/s、Util ピーク 99%
+- blob は `/usr/share/ollama`（サービスユーザ）。このユーザでは `du` 不可。サイズは `ollama list`
+- 詳細: [`../results/02-ollama.md`](../results/02-ollama.md)
 
 ## 失敗したとき
 

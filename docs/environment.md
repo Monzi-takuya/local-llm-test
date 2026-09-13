@@ -41,7 +41,8 @@
 - uv 0.12.13、リポジトリの `.venv` は **Python 3.12.14**
 - システム Python は **3.14.4**（学習スクリプトには使わない）
 - `~/models` 作成済み（空）
-- 未導入: CUDA Toolkit（`nvcc` なし）、Ollama、llama.cpp
+- Ollama **0.34.0**（公式 `install.sh`、systemd `ollama.service`）。展開用に **zstd** 1.5.7 を apt で追加。モデル blob は `/usr/share/ollama`
+- 未導入: CUDA Toolkit（`nvcc` なし）、llama.cpp
 - Windows `%UserProfile%\.wslconfig`: **作成済み**（2026-09-13 16:44）。中身は `sample.wslconfig` と一致。以前の `.wslconfig.txt` は使われないため削除済み
 
 ## 守る制約
