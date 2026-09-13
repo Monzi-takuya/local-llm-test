@@ -6,9 +6,9 @@
 
 ## 現在地
 
-- **フェーズ**: 4（OpenAI 互換 API）
+- **フェーズ**: 5（計測と比較）
 - **状態**: 未着手
-- **次に開くファイル**: [`phases/04-openai-api.md`](phases/04-openai-api.md)
+- **次に開くファイル**: [`phases/05-benchmark.md`](phases/05-benchmark.md)
 
 状態の意味: `未着手` / `実施中` / `ブロック` / `完了`
 
@@ -21,7 +21,7 @@
 | 1 | トークン化とパイプライン | 完了 | [`phases/01-pipeline-tokenize.md`](phases/01-pipeline-tokenize.md) |
 | 2 | Ollama で GPU 確認 | 完了 | [`phases/02-ollama-gpu.md`](phases/02-ollama-gpu.md) |
 | 3 | llama.cpp で中身を見る | 完了 | [`phases/03-llamacpp.md`](phases/03-llamacpp.md) |
-| 4 | OpenAI 互換 API | 未着手 | [`phases/04-openai-api.md`](phases/04-openai-api.md) |
+| 4 | OpenAI 互換 API | 完了 | [`phases/04-openai-api.md`](phases/04-openai-api.md) |
 | 5 | 計測と比較 | 未着手 | [`phases/05-benchmark.md`](phases/05-benchmark.md) |
 | 6 | Cursor からの実行 | 未着手 | [`phases/06-cursor.md`](phases/06-cursor.md) |
 
@@ -53,3 +53,4 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 2026-09-13 | ルール | `.cursor/rules/explain-work.mdc`（なぜやるかと実コマンドを厚く）。フェーズ 3 手順も同じ粒度に更新 |
 | 2026-09-13 | 3 | llama-cli b10938 + Ollama の CUDA so。Linux CUDA 公式バイナリなし。7B `-ngl 99` 80 tok/s vs `-ngl 0` 6.4。`-c` 2048→8192 で VRAM 4544→4886 MiB。`results/03-llamacpp.md` |
 | 2026-09-13 | 学習 | GPU 用語の図解 HTML: [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html) |
+| 2026-09-13 | 4 | llama-server `127.0.0.1:8080`。`/v1/chat/completions` 非ストリーム + SSE。Windows localhost 到達。`scripts/chat_client.py`（openai 3.13 / 3.12）。Ollama `/v1` は任意確認。`results/04-api.md` |

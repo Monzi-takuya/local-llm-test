@@ -65,7 +65,9 @@ Word2vec は単語単位なので、語彙に無い表層はベクトルを返�
 - 日本語: raw 14 トークン → template 後 **43** トークン（同じではない）
 - 英語: raw 13 トークン → template 後 **42** トークン
 
-Qwen のテンプレは system 文（「You are Qwen...」）と `<|im_start|>assistant` の生成開始までを先に載せる。API の `messages` はこのテンプレに落とされてから tokenize される、と考えてよい。
+Qwen のテンプレは system 文（「You are Qwen...」）と `<|im_start|>assistant` の生成開始までを先に載せる。API の `messages` はこのテンプレに落とされてから tokenize される、と考えてよい。フェーズ 4 の実測では、短い「1+1は？…」でも `usage.prompt_tokens` が **39** だった（生の文字数ではない）。
+
+ストリーム（SSE）は、このループの 1 トークンを `data:` 行の `delta.content` として流す。1 行が 1 文字とは限らない（BPE の切れ目）。詳細は [`../results/04-api.md`](../results/04-api.md)。
 
 ## temperature と top-p
 

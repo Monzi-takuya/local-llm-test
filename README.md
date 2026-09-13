@@ -20,7 +20,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 | [`docs/environment.md`](docs/environment.md) | 実測スペックと制約 |
 | [`phases/`](phases/) | フェーズごとの手順・合格条件 |
 | [`notes/`](notes/) | 学習ノート。フェーズ 1 の [`notes/pipeline.md`](notes/pipeline.md)、フェーズ 3 用語の図解 [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html) |
-| [`scripts/`](scripts/) | 検証スクリプト（各フェーズの成果物） |
+| [`scripts/`](scripts/) | 検証スクリプト。フェーズ 1 の tokenizer、フェーズ 4 の [`scripts/chat_client.py`](scripts/chat_client.py) |
 | [`results/`](results/) | 計測メモ・ログ |
 | [`sample.wslconfig`](sample.wslconfig) | WSL 設定のリポジトリ側正本（適用先は `%UserProfile%\.wslconfig`） |
 

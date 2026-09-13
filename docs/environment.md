@@ -42,7 +42,8 @@
 - システム Python は **3.14.4**（学習スクリプトには使わない）
 - `~/models`: `gemma-3-4b-it-Q4_K_M.gguf`（2.4G）、`Qwen2.5-7B-Instruct-Q4_K_M.gguf`（4.4G）
 - Ollama **0.34.0**（公式 `install.sh`、systemd `ollama.service`）。展開用に **zstd** 1.5.7 を apt で追加。モデル blob は `/usr/share/ollama`
-- llama.cpp **b10938** の `llama-cli`（`~/opt/llama.cpp/llama-b10938`）。Linux 公式 CUDA zip は無いため、Ollama 同梱 `libggml-cuda.so` を symlink。CUDA Toolkit（`nvcc`）は未導入
+- llama.cpp **b10938** の `llama-cli` / `llama-server`（`~/opt/llama.cpp/llama-b10938`）。Linux 公式 CUDA zip は無いため、Ollama 同梱 `libggml-cuda.so` を symlink。CUDA Toolkit（`nvcc`）は未導入
+- `.venv` に **openai 3.13.0**（フェーズ 4 の `scripts/chat_client.py`。クラウド OpenAI には未接続）
 - Windows `%UserProfile%\.wslconfig`: **作成済み**（2026-09-13 16:44）。中身は `sample.wslconfig` と一致。以前の `.wslconfig.txt` は使われないため削除済み
 
 ## 守る制約
