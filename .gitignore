@@ -1,0 +1,21 @@
+.venv/
+.python-version
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# モデル本体は git に入れない（WSL ext4 の ~/models を推奨）
+models/
+*.gguf
+*.ggml
+*.bin
+*.safetensors
+
+.env
+.env.*
+
+# 計測の生ログは残してよいが巨大ファイルは除外
+results/*.log
+results/*.jsonl
+results/nvidia-smi*.txt
