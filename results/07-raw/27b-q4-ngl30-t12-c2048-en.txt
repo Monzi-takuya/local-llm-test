@@ -1,0 +1,58 @@
+=== meta ===
+date: 2026-09-13T22:31:08+09:00
+tag: 27b-q4-ngl30-t12-c2048-en
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ngl: 30
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/05-prompt-en.txt
+llama_extra: --reasoning off -t 12 -tb 12
+ram_before: 1.7Gi used / 23Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\|/-\|/-\|/ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> Summarize in one sentence why quantization helps 8GB VRAM.
+Quantization reduces the memory footprint of model weights by representing them with lower-precision numbers, allowing larger models to fit within the limited 8GB VRAM capacity.
+
+[ Prompt: 21.6 t/s | Generation: 3.7 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+1.7Gi used / 23Gi
+
+=== watch ===
+vram_max_mib 7714
+util_max_pct 58
+vram_samples 45

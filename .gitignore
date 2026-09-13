@@ -20,3 +20,4 @@ results/*.log
 results/*.jsonl
 results/nvidia-smi*.txt
 results/05-raw/*.csv
+results/07-raw/*.csv

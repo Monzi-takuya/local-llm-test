@@ -13,8 +13,13 @@
 #     results/05-prompt-ja.txt
 #
 # Writes:
-#   results/05-raw/<tag>.txt      llama-cli stdout+stderr + meta
-#   results/05-raw/<tag>.vram.csv nvidia-smi samples during the run
+#   $BENCH_OUTDIR/<tag>.txt       llama-cli stdout+stderr + meta (default results/05-raw)
+#   $BENCH_OUTDIR/<tag>.vram.csv  nvidia-smi samples during the run
+#
+# Optional env:
+#   LLAMA_BIN       llama.cpp dir (default ~/opt/llama.cpp/llama-b10938)
+#   BENCH_OUTDIR    log directory
+#   LLAMA_EXTRA     extra llama-cli args, e.g. '--reasoning off'
 #
 # Not done here: OpenAI API, Ollama, Windows native, Q8.
 
@@ -50,7 +55,7 @@ if [[ ! -f "$PROMPT_FILE" ]]; then
   exit 1
 fi
 
-OUTDIR="$ROOT/results/05-raw"
+OUTDIR="${BENCH_OUTDIR:-$ROOT/results/05-raw}"
 mkdir -p "$OUTDIR"
 LOG="$OUTDIR/${TAG}.txt"
 WATCH="$OUTDIR/${TAG}.vram.csv"
@@ -81,6 +86,7 @@ trap cleanup EXIT
   echo "top_p: 1.0"
   echo "seed: 0"
   echo "prompt_file: $PROMPT_FILE"
+  echo "llama_extra: ${LLAMA_EXTRA:-}"
   echo "ram_before: $(free -h | awk '/Mem:/ {print $3 " used / " $2}')"
   echo
   echo "=== llama-cli ==="
@@ -95,6 +101,7 @@ trap cleanup EXIT
     -s 0 \
     -st \
     --no-display-prompt \
+    ${LLAMA_EXTRA:-} \
     -p "$PROMPT"
   echo
   echo "=== ram_after ==="

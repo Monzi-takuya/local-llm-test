@@ -1,6 +1,6 @@
 [wsl2]
 # 1. メモリの上限設定
-memory=16GB
+memory=24GB
 
 # 2. ネットワークモード（ミラー化）
 # ※ networkingMode=mirrored を使う場合、localhostForwarding は不要です

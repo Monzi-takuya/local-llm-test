@@ -2,11 +2,11 @@
 
 WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF → GPU 推論 → OpenAI 互換 API** の仕組みを段階的に理解するための実験リポジトリ。
 
-一気に全部やらない。進行の正本は [`PROGRESS.md`](PROGRESS.md)。計画の 0–5 は完了、6 はキャンセル（WSL ターミナルからの実行は 2–5 で確認済み）。追加実験は新しいフェーズを切ってから。
+一気に全部やらない。進行の正本は [`PROGRESS.md`](PROGRESS.md)。計画の 0–5 と 7 は完了、6 はキャンセル。日常モデルは Qwen3.5-9B Q4。追加実験は新しいフェーズを切ってから。
 
 ## いまやること
 
-計画どおりの検証は完了。続きは [`PROGRESS.md`](PROGRESS.md) の現在地を見る。新しい作業は `phases/` にファイルを足してからにする。
+計画どおりのローカル検証は完了。ブラウザは [`scripts/serve.sh`](scripts/serve.sh)（`9b` / `27b`）。GCP で 27B を L4 全載せするのは [`results/10-gcp-27b.md`](results/10-gcp-27b.md): 東京 L4 と **`GPUS_ALL_REGIONS=1`** は揃った。VM はまだ作っていない。
 
 ## ディレクトリ
 
@@ -16,7 +16,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 | [`docs/environment.md`](docs/environment.md) | 実測スペックと制約 |
 | [`phases/`](phases/) | フェーズごとの手順・合格条件 |
 | [`notes/`](notes/) | 学習ノート。[`notes/pipeline.md`](notes/pipeline.md)、GPU 用語 [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html)、量子化 [`notes/learn-quantization.html`](notes/learn-quantization.html) |
-| [`scripts/`](scripts/) | 検証スクリプト。tokenizer、[`scripts/chat_client.py`](scripts/chat_client.py)、フェーズ 5 の [`scripts/bench.sh`](scripts/bench.sh) |
+| [`scripts/`](scripts/) | 検証スクリプト。tokenizer、[`scripts/chat_client.py`](scripts/chat_client.py)、[`scripts/bench.sh`](scripts/bench.sh)、Web UI 起動 [`scripts/serve.sh`](scripts/serve.sh) |
 | [`results/`](results/) | 計測メモ・ログ |
 | [`sample.wslconfig`](sample.wslconfig) | WSL 設定のリポジトリ側正本（適用先は `%UserProfile%\.wslconfig`） |
 
@@ -25,7 +25,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 ## このマシンでの前提
 
 - RTX 5060 **8 GB**（Blackwell）
-- WSL RAM **16 GB**（`sample.wslconfig` / mirrored 適用済み）
+- WSL RAM **24 GB**（`sample.wslconfig` / mirrored 適用済み。実測 Mem 約 23Gi）
 - 学習用 Python は **3.12**（システムの 3.14 は使わない）
 - Cursor Agent のサンドボックスでは GPU が使えない。推論は通常ターミナルで行う
 

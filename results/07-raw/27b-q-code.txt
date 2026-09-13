@@ -1,0 +1,60 @@
+=== meta ===
+date: 2026-09-13T22:32:06+09:00
+tag: 27b-q-code
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ngl: 30
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/07-prompt-q-code.txt
+llama_extra: --reasoning off -t 12 -tb 12
+ram_before: 1.7Gi used / 23Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> Write a Python function is_palindrome(s: str) -> bool that ignores case and non-alphanumeric characters. Return only the function, no markdown.
+def is_palindrome(s: str) -> bool:
+    cleaned = [c.lower() for c in s if c.isalnum()]
+    return cleaned == cleaned[::-1]
+
+[ Prompt: 26.4 t/s | Generation: 3.7 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+1.8Gi used / 23Gi
+
+=== watch ===
+vram_max_mib 7714
+util_max_pct 61
+vram_samples 50

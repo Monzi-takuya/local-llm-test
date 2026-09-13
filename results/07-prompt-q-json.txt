@@ -1,0 +1,1 @@
+次の3件を JSON 配列だけ返せ。キーは name と os。値: WSL2 と Linux、Windows 11 と Windows、RTX 5060 と GPU。説明文は不要。

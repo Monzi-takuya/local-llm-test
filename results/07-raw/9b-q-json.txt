@@ -1,0 +1,58 @@
+=== meta ===
+date: 2026-09-13T22:14:59+09:00
+tag: 9b-q-json
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen3.5-9B-Q4_K_M.gguf
+ngl: 99
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/07-prompt-q-json.txt
+llama_extra: --reasoning off
+ram_before: 2.1Gi used / 23Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\|/ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen3.5-9B-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> 次の3件を JSON 配列だけ返せ。キーは name と os。値: WSL2 と Linux、Windows 11 と Windows、RTX 5060 と GPU。説明文は不要。
+[{"name": "WSL2", "os": "Linux"}, {"name": "Windows 11", "os": "Windows"}, {"name": "RTX 5060", "os": "GPU"}]
+
+[ Prompt: 348.4 t/s | Generation: 65.3 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+2.4Gi used / 23Gi
+
+=== watch ===
+vram_max_mib 5204
+util_max_pct 91
+vram_samples 11

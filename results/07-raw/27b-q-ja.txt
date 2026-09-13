@@ -1,0 +1,70 @@
+=== meta ===
+date: 2026-09-13T22:31:22+09:00
+tag: 27b-q-ja
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ngl: 30
+ctx: 2048
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/07-prompt-q-ja.txt
+llama_extra: --reasoning off -t 12 -tb 12
+ram_before: 1.7Gi used / 23Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\|/-\|/-\|/ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> 取引先に納期が2日遅れることを謝る短いメールを書いてください。件名と本文。丁寧語。中国語は混ぜない。
+件名：納期変更のご連絡とご迷惑をおかけすることへのお詫び
+
+本文：
+お世話になっております。
+株式会社○○の△△です。
+
+この度は、予定しておりました納期が2日遅延することとなりました。
+お客様には多大なるご迷惑をおかけし、誠に申し訳ございません。
+
+新たな納期は【月/日】（曜日）を予定しております。
+何卒、ご容赦いただけますようお願い申し上げます。
+
+引き続き、ご指導ご鞭撻のほど、よろしくお願い申し上げます。
+
+[ Prompt: 4.2 t/s | Generation: 3.6 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+1.8Gi used / 23Gi
+
+=== watch ===
+vram_max_mib 7714
+util_max_pct 86
+vram_samples 145

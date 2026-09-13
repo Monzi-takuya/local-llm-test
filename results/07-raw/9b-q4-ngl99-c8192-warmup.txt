@@ -1,0 +1,58 @@
+=== meta ===
+date: 2026-09-13T22:14:18+09:00
+tag: 9b-q4-ngl99-c8192-warmup
+bin: /home/kuos1/opt/llama.cpp/llama-b10938/llama-cli
+gguf: /home/kuos1/models/Qwen3.5-9B-Q4_K_M.gguf
+ngl: 99
+ctx: 8192
+n_predict: 128
+temp: 0
+top_k: 0
+top_p: 1.0
+seed: 0
+prompt_file: results/05-prompt-ja.txt
+llama_extra: --reasoning off
+ram_before: 1.7Gi used / 23Gi
+
+=== llama-cli ===
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10938-f1e44dcc1
+model      : /home/kuos1/models/Qwen3.5-9B-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> WSLからローカルLLMを動かしたい理由を一文で。
+WSL からローカル LLM を動かす主な理由は、Windows 上で高機能な Linux 環境を維持しつつ、個人データや機密情報を外部サーバーに送信せず、プライバシーとセキュリティを確保しながらオフラインでも高品質な AI 推論が可能になる点にあります。
+
+[ Prompt: 175.2 t/s | Generation: 65.1 t/s ]
+
+
+Exiting...
+
+=== ram_after ===
+1.7Gi used / 23Gi
+
+=== watch ===
+vram_max_mib 5400
+util_max_pct 91
+vram_samples 11
