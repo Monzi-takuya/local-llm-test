@@ -14,3 +14,4 @@
 | `06-cursor.md` | 6（キャンセル記録） |
 | `07-best-local.md` / `07-prompts.md` / `07-raw/` | 7 |
 | `10-gcp-27b.md` | 10（monzi-sandbox の L4 可否。GPU VM なし） |
+| `11-gcp-l4.md` / `11-raw/` | 11（東京 L4 全載せ。VRAM csv は git 対象外） |

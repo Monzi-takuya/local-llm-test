@@ -15,5 +15,6 @@
 | [08-webui.md](08-webui.md) | llama-server 付属 UI で 9B / 27B | 必須 | [`../scripts/serve.sh`](../scripts/serve.sh) |
 | [09-base-output.md](09-base-output.md) | 同じ口で 9B-Base の出力を見る（研究） | 必須 | `serve.sh 9b-base` |
 | [10-gcp-27b.md](10-gcp-27b.md) | monzi-sandbox で 27B を L4 全載せできるか | 不要（gcloud） | [`../results/10-gcp-27b.md`](../results/10-gcp-27b.md) |
+| [11-gcp-l4-iap.md](11-gcp-l4-iap.md) | 東京 L4 に 27B 全載せ（IAP・外部 IP なし） | 不要（クラウド L4） | `scripts/gcp/`、[`../results/11-gcp-l4.md`](../results/11-gcp-l4.md) |
 
 実行ルールは [`../PROGRESS.md`](../PROGRESS.md)。スペックは [`../docs/environment.md`](../docs/environment.md)。

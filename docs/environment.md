@@ -71,7 +71,7 @@
 
 ローカル 27B は部分 GPU で 3.7 tok/s。対話速度にするなら GCP の **L4 24GB / `g2-standard-8`（東京）**。T4 16GB は 27B Q4 に足りない。
 
-実測（プロジェクト `monzi-sandbox`、gcloud JSON）: 東京 a/b/c に `nvidia-l4` あり。地域 `NVIDIA_L4_GPUS=1`。2026-09-14 夜に **`GPUS_ALL_REGIONS=1`**（申請が約 1 分で承認）。GPU VM は未作成。詳細 [`../results/10-gcp-27b.md`](../results/10-gcp-27b.md)。
+実測（プロジェクト `monzi-sandbox`、gcloud JSON）: 東京 a/b/c に `nvidia-l4` あり。地域 `NVIDIA_L4_GPUS=1`。2026-09-14 夜に **`GPUS_ALL_REGIONS=1`**（申請が約 1 分で承認）。2026-09-15: 東京 c で `g2-standard-8` を立て、27B Q4 `-ngl 99` は Gen **14.5 tok/s**、VRAM 15320 MiB。VM は stop、ディスク残。詳細 [`../results/11-gcp-l4.md`](../results/11-gcp-l4.md)。
 
 9B 日常をクラウドに載せる理由は薄い（ローカル 66 tok/s の方が速く、限界費用は電気）。
 

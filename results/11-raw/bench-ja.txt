@@ -1,0 +1,82 @@
++ echo '=== meta ==='
+=== meta ===
++ date -Is
+2026-09-14T18:09:34+00:00
++ /home/kuos1/opt/llama.cpp/build/bin/llama-cli --version
+version: 0.4.1-dev (build 1, commit 41abbfd)
+built with GNU 11.4.0 for Linux x86_64
++ git -C /home/kuos1/opt/llama.cpp log -1 --oneline
+41abbfd qwen4exp: enable rms_norm + mul fusion (#28896)
++ echo 'gguf: /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf'
+gguf: /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
++ echo 'ngl: 99  ctx: 2048  n: 128  temp: 0  reasoning: off'
+ngl: 99  ctx: 2048  n: 128  temp: 0  reasoning: off
++ echo
+
++ echo '=== llama-cli ==='
+=== llama-cli ===
+++ cat /home/kuos1/prompt-ja.txt
++ /home/kuos1/opt/llama.cpp/build/bin/llama-cli -m /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf -ngl 99 -c 2048 -n 128 --temp 0 --top-k 0 --top-p 1.0 -s 0 -st --no-display-prompt --reasoning off -p WSLからローカルLLMを動かしたい理由を一文で。
+
+
+Loading model... |-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b1-41abbfd
+model      : /home/kuos1/models/Qwen3.8-27B-UD-Q4_K_M.gguf
+ftype      : Q4_K - Medium
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> WSLからローカルLLMを動かしたい理由を一文で。
+WindowsのGUI環境を維持したまま、Linuxネイティブのツールチェーンや高性能な推論ライブラリをシームレスに利用して開発効率を最大化するため。
+
+[ Prompt: 83.9 t/s | Generation: 14.5 t/s ]
+
+
+Exiting...
++ echo
+
++ echo '=== nvidia-smi after ==='
+=== nvidia-smi after ===
++ nvidia-smi
+Mon Sep 14 18:09:49 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      Off |   00000000:00:03.0 Off |                    0 |
+| N/A   55C    P0             30W /   72W |       0MiB /  23034MiB |      4%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+=== watch ===
+vram_max_mib 15320
+util_max_pct 99
+vram_samples 38

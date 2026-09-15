@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>raw /completion</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; background: #f4f2ee; color: #1c1917; }
+    h1 { font-size: 1.15rem; font-weight: 650; }
+    p.note { font-size: 0.9rem; line-height: 1.45; color: #44403c; }
+    label { display: block; font-size: 0.8rem; margin: 0.7rem 0 0.25rem; }
+    textarea, input, pre { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 0.85rem; background: #fff; color: #1c1917; border: 1px solid #d6d3d1; border-radius: 6px; padding: 0.45rem 0.5rem; }
+    textarea { min-height: 6rem; }
+    pre { white-space: pre-wrap; overflow-x: auto; min-height: 2.4rem; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 8rem; }
+    button { margin-top: 0.9rem; padding: 0.4rem 0.9rem; }
+    .content { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 1rem; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>生の <code>POST /completion</code></h1>
+  <p class="note">
+    llama-server の <code>/v1/chat/completions</code> と付属 Web UI は使わない。
+    <code>messages</code> も Jinja も付けない。<code>prompt</code> をそのまま次トークン予測する。
+    先に <code>scripts/serve.sh 9b-base</code> が待っていること。このページは 8090。
+  </p>
+
+  <form id="f">
+    <label for="llama_url">llama-server の URL（<code>/completion</code>。localhost のみ）</label>
+    <input id="llama_url" type="url" value="http://127.0.0.1:8080/completion">
+    <label for="prompt">prompt</label>
+    <textarea id="prompt" name="prompt">むかしむかしあるところに、</textarea>
+    <div class="row">
+      <div>
+        <label for="n_predict">n_predict</label>
+        <input id="n_predict" type="number" min="1" max="2048" value="64">
+      </div>
+      <div>
+        <label for="temperature">temperature（空ならサーバ既定）</label>
+        <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="省略">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="repeat_penalty">repeat_penalty（1 = 無効。空ならサーバ既定）</label>
+        <input id="repeat_penalty" type="number" min="0.01" max="2" step="0.01" placeholder="省略" value="1">
+      </div>
+      <div>
+        <label for="repeat_last_n">repeat_last_n（直近 N。0 = 無効、-1 = ctx。空ならサーバ既定）</label>
+        <input id="repeat_last_n" type="number" min="-1" max="8192" step="1" placeholder="省略" value="64">
+      </div>
+    </div>
+    <button type="submit">送る</button>
+  </form>
+
+  <label>送る JSON</label>
+  <pre id="req">（未送信）</pre>
+  <label>content</label>
+  <pre id="content" class="content">（未送信）</pre>
+  <label>生の応答 JSON</label>
+  <pre id="raw">（未送信）</pre>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function bodyFromForm() {
+      const llama_url = $("llama_url").value;
+      const body = {
+        prompt: $("prompt").value,
+        n_predict: Number($("n_predict").value),
+      };
+      const t = $("temperature").value;
+      if (t !== "") body.temperature = Number(t);
+      const rp = $("repeat_penalty").value;
+      if (rp !== "") body.repeat_penalty = Number(rp);
+      const rn = $("repeat_last_n").value;
+      if (rn !== "") body.repeat_last_n = Number(rn);
+      return { llama_url, body };
+    }
+    $("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { llama_url, body } = bodyFromForm();
+      $("req").textContent = JSON.stringify({ POST: llama_url, body }, null, 2);
+      $("content").textContent = "…";
+      $("raw").textContent = "…";
+      $("content").classList.remove("err");
+      try {
+        const res = await fetch("/api/completion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ llama_url, ...body }),
+        });
+        const wrap = await res.json();
+        $("raw").textContent = JSON.stringify(wrap, null, 2);
+        if (!res.ok) {
+          $("content").textContent = wrap.error || res.statusText;
+          $("content").classList.add("err");
+          return;
+        }
+        const inner = wrap.response;
+        $("content").textContent = (inner && inner.content) || "(content なし)";
+      } catch (err) {
+        $("content").textContent = String(err);
+        $("content").classList.add("err");
+        $("raw").textContent = String(err);
+      }
+    });
+  </script>
+</body>
+</html>

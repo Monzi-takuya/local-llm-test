@@ -6,7 +6,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 
 ## いまやること
 
-計画どおりのローカル検証は完了。ブラウザは [`scripts/serve.sh`](scripts/serve.sh)（`9b` / `27b`）。GCP で 27B を L4 全載せするのは [`results/10-gcp-27b.md`](results/10-gcp-27b.md): 東京 L4 と **`GPUS_ALL_REGIONS=1`** は揃った。VM はまだ作っていない。
+計画どおりのローカル検証は完了。ブラウザは [`scripts/serve.sh`](scripts/serve.sh)（`9b` / `27b`）。東京 L4 の 27B 全載せは [`results/11-gcp-l4.md`](results/11-gcp-l4.md): Gen **14.5 tok/s**。VM は stop 済み、ディスクは残している。
 
 ## ディレクトリ
 
@@ -16,7 +16,7 @@ WSL2 からローカル LLM の推論を検証し、**トークン化 → GGUF �
 | [`docs/environment.md`](docs/environment.md) | 実測スペックと制約 |
 | [`phases/`](phases/) | フェーズごとの手順・合格条件 |
 | [`notes/`](notes/) | 学習ノート。[`notes/pipeline.md`](notes/pipeline.md)、GPU 用語 [`notes/learn-gpu-stack.html`](notes/learn-gpu-stack.html)、量子化 [`notes/learn-quantization.html`](notes/learn-quantization.html) |
-| [`scripts/`](scripts/) | 検証スクリプト。tokenizer、[`scripts/chat_client.py`](scripts/chat_client.py)、[`scripts/bench.sh`](scripts/bench.sh)、Web UI 起動 [`scripts/serve.sh`](scripts/serve.sh) |
+| [`scripts/`](scripts/) | 検証スクリプト。tokenizer、[`scripts/chat_client.py`](scripts/chat_client.py)、[`scripts/bench.sh`](scripts/bench.sh)、Web UI 起動 [`scripts/serve.sh`](scripts/serve.sh)、Base 生続き [`scripts/raw_complete.py`](scripts/raw_complete.py)。GCP VM は [`scripts/gcp/`](scripts/gcp/) |
 | [`results/`](results/) | 計測メモ・ログ |
 | [`sample.wslconfig`](sample.wslconfig) | WSL 設定のリポジトリ側正本（適用先は `%UserProfile%\.wslconfig`） |
 

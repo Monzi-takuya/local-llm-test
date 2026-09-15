@@ -49,7 +49,19 @@ scripts/serve.sh 9b
 - `listening on http://127.0.0.1:8080`
 - `nvidia-smi` の used。9B と同じ帯（約 5400 MiB）なら全載せ
 
-**混同ポイント**: GGUF に公式の chat template が載っている。Web UI は 9b と同じく `<|im_start|>` と空の `<think>` を付ける。見ているのは「生の次トークン予測」そのものではなく、**同じ型に流した Base 重み**。生の続きが欲しいときは `llama-cli -p` でテンプレ無し。
+**混同ポイント**: GGUF に公式の chat template が載っている。付属 Web UI は 9b と同じく `<|im_start|>` と空の `<think>` を付ける。見ているのは「生の次トークン予測」そのものではなく、**同じ型に流した Base 重み**。
+
+生の続きは `POST /completion`（`chat_format: Content-only`）。ブラウザから打つなら付属 UI ではなく:
+
+```bash
+# 別ターミナル。8080 の llama-server は動かしたまま
+source .venv/bin/activate
+python scripts/raw_complete.py
+```
+
+`http://127.0.0.1:8090/`（Windows mirrored 可）。送る JSON と生の応答を同じページに出す。`messages` は付けない。8080 は llama-server のまま。
+
+`repeat_penalty` は直近に出したトークンの logits を下げる倍率。**1 は無効**（この llama-server の既定）。窓は `repeat_last_n`（既定 64）。temperature 0 の繰り返しを切るか見るなら 1.1 前後。空欄はキーを送らずサーバ既定。Flask は HTML を毎回読むので、サーバを再起動せずブラウザ再読込で欄が増える。
 
 `--reasoning on` は Base でも渡せるが、thinking 習慣は post-train 側。on を試すなら「空 think を埋められるか」の観察用。
 
@@ -83,4 +95,5 @@ scripts/serve.sh 9b
 ## 成果物
 
 - [`../scripts/serve.sh`](../scripts/serve.sh) の `9b-base`
+- [`../scripts/raw_complete.py`](../scripts/raw_complete.py) / [`../scripts/raw_complete.html`](../scripts/raw_complete.html)（`/completion` の 1 枚 UI）
 - 任意: `results/09-base.md`
