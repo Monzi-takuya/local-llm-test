@@ -109,3 +109,10 @@ Transformer の各層は、これまでのトークンの Key / Value を参照�
 - **GGUF**: llama.cpp / Ollama が読む実行用。Q4 などはここに入っていることが多い
 
 中身のバイナリ解剖はしない。GPU 側の用語（llama.cpp / CUDA / `-ngl` / `.so`）は [`learn-gpu-stack.html`](learn-gpu-stack.html)。
+
+## 続きのノート
+
+このノートは tokenize と sampling の話で、forward の中身（層、attention、FFN）と、重みの値がどう決まるか（事前学習・事後学習）は扱っていない。
+
+- [`learn-llm-basics.html`](learn-llm-basics.html)（ノート A）: forward の中身、1 層の構造、KV cache の正体、Qwen3.5 の hybrid attention、Base と Instruct はどこが違うか、推論コストの出どころ。フェーズ 13 の前に読む
+- [`learn-sft-lora.html`](learn-sft-lora.html)（ノート B）: 学習が何を動かすか、8GB に載らない算数、SFT と completion-only loss、LoRA、target_modules、過学習と忘却、merge と量子化。フェーズ 14 の前に 1–6、フェーズ 16 の後に 7–8

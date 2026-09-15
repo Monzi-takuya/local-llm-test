@@ -84,6 +84,8 @@ python scripts/raw_complete.py
 
 記録するなら [`../results/09-base.md`](../results/09-base.md) にコマンドと観察だけ。必須ではない。
 
+2026-09-15 追記: 「Base は指示を守らない」の定量的な記録は、フェーズ 13（[`13-name-split-probe.md`](13-name-split-probe.md)）の表に吸収する。同じ 20 件を 9b / 9b-base / 2b / 2b-base で取り、Base 2 種の実例を貼る。なぜ Base が続きを書くのかは [`../notes/learn-llm-basics.html`](../notes/learn-llm-basics.html) の 5–6 節。
+
 ## 失敗したとき
 
 | 現象 | まず疑うこと |

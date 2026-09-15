@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LLM の中身 — これまで動かしてきたものは何をしていたか（学習ノート A）</title>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --paper: #fffdf8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d0c0;
+      --accent: #0f6b5c;
+      --accent-2: #b45309;
+      --gpu: #1d4ed8;
+      --ok: #166534;
+      --warn: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    header.hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.5rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.35; }
+    h2 {
+      font-size: 1.25rem;
+      margin: 2.2rem 0 0.7rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
+    .lead { font-size: 1.02rem; }
+    .muted { color: var(--muted); }
+    nav.toc {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    nav.toc ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+    nav.toc a { color: var(--accent); }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef7f4;
+      padding: 0.8rem 1rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1rem 0;
+    }
+    .warn { border-left-color: var(--accent-2); background: #fff7ed; }
+    .machine { border-left-color: var(--gpu); background: #eff6ff; }
+    .def { border-left-color: #6b21a8; background: #f5f3ff; }
+    figure.diagram {
+      margin: 1.1rem 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem 0.6rem 0.4rem;
+      overflow-x: auto;
+    }
+    figcaption {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0.2rem 0 0.6rem;
+    }
+    svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", "Noto Sans Mono", monospace;
+      font-size: 0.86em;
+      background: #efe8da;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre {
+      background: #efe8da;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #efe8da; }
+    details {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.6rem 0.9rem;
+      margin: 0.6rem 0;
+    }
+    summary { cursor: pointer; font-weight: 600; }
+    footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>LLM の中身 — これまで動かしてきたものは何をしていたか</h1>
+      <p class="lead">フェーズ 0–12 で、tokenizer → GGUF → GPU → <code>llama-server</code> → クラウド L4 まで一通り動かした。このノートは、その <strong>tokenize と logits の間</strong> で何が起きているかを、実測した数字だけで説明する。フェーズ 13（姓名分割のプローブ）の前に読む。</p>
+      <p class="muted">前提: <a href="pipeline.md">pipeline.md</a>（BPE、chat template、temperature、KV cache、GGUF）は読んだものとして、そこにある話は繰り返さない。GPU 用語は <a href="learn-gpu-stack.html">learn-gpu-stack.html</a>、量子化は <a href="learn-quantization.html">learn-quantization.html</a>。</p>
+    </header>
+
+    <nav class="toc" aria-label="目次">
+      <strong>目次</strong>
+      <ol>
+        <li><a href="#forward">1 トークン分の forward を上から下まで</a></li>
+        <li><a href="#layer">1 層の中身: attention と FFN</a></li>
+        <li><a href="#attention">attention の 1 行と KV cache</a></li>
+        <li><a href="#hybrid">Qwen3.5 の hybrid attention</a></li>
+        <li><a href="#pretrain">事前学習が最適化しているもの</a></li>
+        <li><a href="#base-instruct">Base と Instruct はどこが違うか</a></li>
+        <li><a href="#cost">推論のコストの出どころ</a></li>
+        <li><a href="#quiz">確認問題</a></li>
+        <li><a href="#this-run">この検証の数字</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="forward">1. 1 トークン分の forward を上から下まで</h2>
+    <p><a href="pipeline.md">pipeline.md</a> のループは「tokenize → forward で logits → sampling → detokenize → 繰り返し」だった。このノートが埋めるのは <strong>forward</strong> の箱の中である。</p>
+    <div class="callout def">
+      <strong>forward</strong>（順伝播）: 入力の token ID 列を、モデルの層を順に通して、次トークンのスコア（<strong>logits</strong>）を出す計算。推論で毎トークン走る。学習でも同じ計算をし、そのあとに逆向きのパス（backward）が足される。
+    </div>
+    <p>箱の大きさを最初に固定する。Qwen3.5-9B（フェーズ 7 の日常）はおおよそ次の形。</p>
+    <table>
+      <thead><tr><th>部品</th><th>何か</th><th>Qwen3.5-9B の大きさ</th></tr></thead>
+      <tbody>
+        <tr><td>語彙</td><td>token ID の種類数</td><td>約 25 万（Qwen3.5 は 248K 級。Qwen2.5 は約 15 万）</td></tr>
+        <tr><td>embedding 行列</td><td>ID → ベクトルの表。<code>語彙 × d_model</code></td><td>約 25 万行</td></tr>
+        <tr><td>d_model</td><td>層の中を流れるベクトルの長さ（隠れ次元）</td><td>数千（9B で 4096 前後。2B はフェーズ 14 で実測）</td></tr>
+        <tr><td>層</td><td>同じ形の箱の繰り返し</td><td>32 層（2B / 0.8B は 24 層）</td></tr>
+        <tr><td>lm_head</td><td>最終ベクトル → 語彙サイズの logits</td><td><code>d_model × 語彙</code></td></tr>
+      </tbody>
+    </table>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 300" width="720" height="300" role="img" aria-label="forward の全体">
+        <rect x="20" y="20" width="150" height="50" rx="8" fill="#efe8da" stroke="#5c564c"/>
+        <text x="95" y="42" text-anchor="middle" font-size="12">token ID 列</text>
+        <text x="95" y="60" text-anchor="middle" font-size="11" fill="#5c564c">[151644, 872, …]</text>
+        <polygon points="170,45 200,45 200,38 220,45 200,52 200,45" fill="#57534e"/>
+        <rect x="225" y="20" width="150" height="50" rx="8" fill="#f5f3ff" stroke="#6b21a8"/>
+        <text x="300" y="42" text-anchor="middle" font-size="12">embedding</text>
+        <text x="300" y="60" text-anchor="middle" font-size="11" fill="#5c564c">1 行を引く → d_model 次元</text>
+        <polygon points="375,45 405,45 405,38 425,45 405,52 405,45" fill="#57534e"/>
+        <rect x="430" y="20" width="270" height="50" rx="8" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="565" y="42" text-anchor="middle" font-size="12">層 × N（9B は 32、2B は 24）</text>
+        <text x="565" y="60" text-anchor="middle" font-size="11" fill="#5c564c">各層で attention → FFN。形は d_model のまま</text>
+
+        <polygon points="565,70 565,95 558,95 565,110 572,95 565,95" fill="#57534e"/>
+        <rect x="430" y="115" width="270" height="50" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="565" y="137" text-anchor="middle" font-size="12">lm_head（d_model → 語彙）</text>
+        <text x="565" y="155" text-anchor="middle" font-size="11" fill="#5c564c">logits: 約 25 万個の生スコア</text>
+
+        <polygon points="565,165 565,190 558,190 565,205 572,190 565,190" fill="#57534e"/>
+        <rect x="430" y="210" width="270" height="50" rx="8" fill="#eff6ff" stroke="#1d4ed8"/>
+        <text x="565" y="232" text-anchor="middle" font-size="12">softmax → sampling（temperature / top-p）</text>
+        <text x="565" y="250" text-anchor="middle" font-size="11" fill="#5c564c">1 個の ID を選ぶ → 次の入力に足す</text>
+
+        <text x="20" y="140" font-size="12" fill="#5c564c">forward = 上段 3 箱 + lm_head。</text>
+        <text x="20" y="160" font-size="12" fill="#5c564c">sampling は forward の外（llama.cpp 側）。</text>
+        <text x="20" y="200" font-size="12" fill="#5c564c">最後のトークン位置の logits だけを使う。</text>
+        <text x="20" y="220" font-size="12" fill="#5c564c">過去位置の計算結果は KV cache に残す（3 節）。</text>
+      </svg>
+      <figcaption>1 トークン進めるたびに、この縦の流れを 1 回通る。層の中を流れるのは常に d_model 次元のベクトル。</figcaption>
+    </figure>
+    <p>ここで押さえるのは 2 点。<strong>層の入口と出口のベクトルは同じ長さ</strong>（だから何層でも積める）。<strong>最後に一度だけ語彙サイズに戻す</strong>（lm_head）。フェーズ 4 の <code>/v1/models</code> にあった <code>n_params</code> は、この表の全部の行列の要素数の合計である。</p>
+
+    <h2 id="layer">2. 1 層の中身: attention と FFN</h2>
+    <p>1 層は 2 つの箱で、それぞれの箱の出力を <strong>入力に足し戻す</strong>（residual 接続）。箱の前に norm（ベクトルの大きさを揃える正規化）が入る。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 240" width="720" height="240" role="img" aria-label="1 層の構造">
+        <line x1="60" y1="120" x2="660" y2="120" stroke="#57534e" stroke-width="2"/>
+        <text x="30" y="124" font-size="12" fill="#5c564c">x</text>
+        <text x="680" y="124" font-size="12" fill="#5c564c">x'</text>
+
+        <rect x="130" y="40" width="180" height="56" rx="8" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="220" y="62" text-anchor="middle" font-size="12">attention</text>
+        <text x="220" y="82" text-anchor="middle" font-size="11" fill="#5c564c">過去トークンのどこを見るか</text>
+        <line x1="130" y1="120" x2="130" y2="96" stroke="#0f6b5c" stroke-width="2"/>
+        <line x1="310" y1="96" x2="310" y2="120" stroke="#0f6b5c" stroke-width="2"/>
+        <circle cx="310" cy="120" r="8" fill="#fff" stroke="#57534e"/>
+        <text x="310" y="124" text-anchor="middle" font-size="11">+</text>
+        <text x="110" y="30" font-size="11" fill="#5c564c">norm →</text>
+
+        <rect x="410" y="40" width="180" height="56" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="500" y="62" text-anchor="middle" font-size="12">FFN（MLP）</text>
+        <text x="500" y="82" text-anchor="middle" font-size="11" fill="#5c564c">見た内容を変換する</text>
+        <line x1="410" y1="120" x2="410" y2="96" stroke="#b45309" stroke-width="2"/>
+        <line x1="590" y1="96" x2="590" y2="120" stroke="#b45309" stroke-width="2"/>
+        <circle cx="590" cy="120" r="8" fill="#fff" stroke="#57534e"/>
+        <text x="590" y="124" text-anchor="middle" font-size="11">+</text>
+        <text x="390" y="30" font-size="11" fill="#5c564c">norm →</text>
+
+        <text x="60" y="180" font-size="12" fill="#1c1915">attention の重み: q_proj, k_proj, v_proj, o_proj（4 枚。おおよそ d_model × d_model 級）</text>
+        <text x="60" y="205" font-size="12" fill="#1c1915">FFN の重み: gate_proj, up_proj, down_proj（3 枚。d_model × 中間次元。中間は d_model の数倍）</text>
+        <text x="60" y="228" font-size="11" fill="#5c564c">この 7 つの名前が、フェーズ 14 で named_modules() に出てくる。LoRA はこの名前を指して足す。</text>
+      </svg>
+      <figcaption>横線が residual（そのまま通る道）。箱の出力は横線に足されるだけなので、箱が何もしなければ入力がそのまま出る。</figcaption>
+    </figure>
+    <p>パラメータの大半は FFN にある。中間次元が d_model の数倍あるので、<code>gate/up/down</code> の 3 枚で attention の 4 枚より大きい。<a href="learn-quantization.html">量子化ノート</a>の「<code>_M</code> は FFN の巨大行列を薄くする」はこの話である。</p>
+    <div class="callout">
+      2 つの箱の役割分担は「attention = どのトークンを参照するか」「FFN = 参照した内容をどう書き換えるか」と思っておけば足りる。知識（事実の記憶）は FFN 側に多く入っている、という研究結果が多い。だから LoRA を attention だけに当てるか FFN にも当てるかで、姓名の「覚え方」が変わりうる。
+    </div>
+
+    <h2 id="attention">3. attention の 1 行と KV cache</h2>
+    <p>attention は各トークン位置で 3 つのベクトルを作る。入力 <code>x</code> に 3 枚の重みを掛けるだけである。</p>
+    <ul>
+      <li><strong>Q</strong>（query）= <code>x · Wq</code>: 今の位置が「何を探しているか」</li>
+      <li><strong>K</strong>（key）= <code>x · Wk</code>: 各位置が「何を持っているか」の見出し</li>
+      <li><strong>V</strong>（value）= <code>x · Wv</code>: 各位置が「渡す中身」</li>
+    </ul>
+    <p>今の位置の Q と、過去すべての位置の K の内積を取り、softmax で重みにして V を加重平均する。それに <code>Wo</code> を掛けて residual に足す。式は 1 行で、<code>softmax(Q·Kᵀ / √d) · V</code>。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 200" width="720" height="200" role="img" aria-label="KV cache">
+        <text x="20" y="30" font-size="12" fill="#1c1915">位置:</text>
+        <g font-size="12">
+          <rect x="70" y="14" width="90" height="26" rx="5" fill="#efe8da" stroke="#5c564c"/><text x="115" y="32" text-anchor="middle">山田</text>
+          <rect x="170" y="14" width="90" height="26" rx="5" fill="#efe8da" stroke="#5c564c"/><text x="215" y="32" text-anchor="middle">太郎</text>
+          <rect x="270" y="14" width="90" height="26" rx="5" fill="#efe8da" stroke="#5c564c"/><text x="315" y="32" text-anchor="middle">を</text>
+          <rect x="370" y="14" width="90" height="26" rx="5" fill="#fef3c7" stroke="#b45309"/><text x="415" y="32" text-anchor="middle">姓</text>
+        </g>
+        <text x="20" y="75" font-size="12" fill="#1c1915">K, V:</text>
+        <g font-size="11">
+          <rect x="70" y="58" width="90" height="26" rx="5" fill="#dbeafe" stroke="#1d4ed8"/><text x="115" y="76" text-anchor="middle">K₁ V₁（保存）</text>
+          <rect x="170" y="58" width="90" height="26" rx="5" fill="#dbeafe" stroke="#1d4ed8"/><text x="215" y="76" text-anchor="middle">K₂ V₂（保存）</text>
+          <rect x="270" y="58" width="90" height="26" rx="5" fill="#dbeafe" stroke="#1d4ed8"/><text x="315" y="76" text-anchor="middle">K₃ V₃（保存）</text>
+          <rect x="370" y="58" width="90" height="26" rx="5" fill="#fef3c7" stroke="#b45309"/><text x="415" y="76" text-anchor="middle">K₄ V₄（今計算）</text>
+        </g>
+        <text x="20" y="120" font-size="12" fill="#1c1915">Q₄:</text>
+        <rect x="370" y="103" width="90" height="26" rx="5" fill="#eef7f4" stroke="#0f6b5c"/><text x="415" y="121" text-anchor="middle" font-size="11">Q₄（今計算）</text>
+        <path d="M415,103 C415,90 115,95 115,84" fill="none" stroke="#0f6b5c" stroke-width="1.5"/>
+        <path d="M415,103 C415,92 215,97 215,84" fill="none" stroke="#0f6b5c" stroke-width="1.5"/>
+        <path d="M415,103 C415,94 315,99 315,84" fill="none" stroke="#0f6b5c" stroke-width="1.5"/>
+        <text x="480" y="121" font-size="11" fill="#5c564c">Q₄ と K₁..K₄ の内積 → 重み → V の加重平均</text>
+        <text x="20" y="165" font-size="12" fill="#1c1915">次のトークンでは K₁..K₄ を再計算しない。保存した箱に K₅ V₅ を足すだけ。</text>
+        <text x="20" y="185" font-size="11" fill="#5c564c">この保存箱が KV cache。層ごと・位置ごとに持つので、コンテキストが長いほど VRAM を食う。</text>
+      </svg>
+      <figcaption>過去位置の K と V は入力が変わらない限り同じ。だから取っておける。Q は今の位置だけ要る。</figcaption>
+    </figure>
+    <p>これが <a href="pipeline.md">pipeline.md</a> の KV cache の中身である。フェーズ 3 で <code>-c 2048 → 8192</code> にしたとき VRAM が 4544 → 4886 MiB に増えたのは、この保存箱を 4 倍の長さ分確保したから。重みは 1 バイトも増えていない。</p>
+    <div class="callout warn">
+      <strong>GQA</strong>（grouped-query attention）: Qwen3.5-2B は attention head が Q 8 本に対して K/V 2 本。K/V を複数の Q head で共有して KV cache を小さくしている。フェーズ 14 で <code>k_proj</code> / <code>v_proj</code> の出力次元が <code>q_proj</code> より小さく見えたら、これが理由。バグではない。
+    </div>
+
+    <h2 id="hybrid">4. Qwen3.5 の hybrid attention</h2>
+    <p>ここまでの attention は「過去すべての K と Q の内積を取る」ので、計算量と KV cache が系列長に比例して伸びる。Qwen3.5 は <strong>一部の層を Gated DeltaNet に置き換えている</strong>（hybrid）。</p>
+    <div class="callout def">
+      <strong>Gated DeltaNet</strong>: 過去を全部保存する代わりに、固定サイズの「状態」行列に畳み込んで持つ線形 attention の一種。新しいトークンが来るたびに状態を少し更新する（delta rule）。系列が長くなってもメモリが増えない。
+    </div>
+    <p>このノートで必要なのは次の 3 点だけで、式は追わない。</p>
+    <ul>
+      <li><strong>全層が同じ形ではない</strong>。通常 attention の層と DeltaNet の層が並んでいる。フェーズ 14 の <code>named_modules()</code> で、層によって線形層の名前が違って見えるのはこれ</li>
+      <li>DeltaNet 層にも線形層（入力を状態に写す射影）はある。LoRA をどこに当てるかを決めるとき「attention の q/k/v/o だけ」では <strong>その層を素通り</strong>することになる。当てるか当てないかは実験条件</li>
+      <li>フェーズ 7 のログ「GDN は CUDA」の GDN はこれ。llama.cpp 側に専用カーネルがあるので GPU で走った</li>
+    </ul>
+    <p>Qwen3.5 は natively multimodal（画像も同じ重みで扱う）でもある。safetensors には vision 側の重みが同梱されうる。GGUF にするときテキスト側だけを切り出す話は、フェーズ 16 で踏む。</p>
+
+    <h2 id="pretrain">5. 事前学習が最適化しているもの</h2>
+    <p>ここまでの箱の中の数値（重み）は、どうやって決まったか。<strong>事前学習</strong>（pre-training）は、大量テキストの各位置で「次のトークンは何か」を当てるゲームを、何兆トークン分やった結果である。</p>
+    <div class="callout def">
+      <strong>cross-entropy 損失</strong>: 正解トークンにモデルが割り当てた確率 p に対して <code>−log p</code>。正解に確率 1 を付ければ 0、確率 0.01 なら約 4.6。全位置の平均を下げるのが学習の目的。
+    </div>
+    <p>大事なのは、事前学習で最適化しているのは <strong>この 1 つの数字だけ</strong>ということ。「文法を覚えろ」「事実を覚えろ」「質問に答えろ」とは一度も言っていない。次トークンを当てる精度を上げると、結果として文法も事実も、ある程度の推論も、そこに入ってくる。</p>
+    <p>だから Base モデルは <strong>「確率分布を出す機械」</strong>であって「答える機械」ではない。「山田太郎を姓と名に分けてください」の続きとして最もありそうなテキストが「次の問題」や「解答例: 」のような文であれば、そちらを出す。フェーズ 9 と 13 で見る「Base は続きを書く」は、壊れているのではなく、この目的関数に忠実なだけである。</p>
+
+    <h2 id="base-instruct">6. Base と Instruct はどこが違うか</h2>
+    <p>重みの <strong>形</strong>は同じ。層数、d_model、語彙、全部同じ。違うのは <strong>値</strong>だけである。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 210" width="720" height="210" role="img" aria-label="Base から Instruct へ">
+        <rect x="20" y="30" width="200" height="120" rx="10" fill="#efe8da" stroke="#5c564c"/>
+        <text x="120" y="55" text-anchor="middle" font-size="13">Base</text>
+        <text x="120" y="80" text-anchor="middle" font-size="11" fill="#5c564c">事前学習のみ</text>
+        <text x="120" y="100" text-anchor="middle" font-size="11" fill="#5c564c">「続きを書く」分布</text>
+        <text x="120" y="120" text-anchor="middle" font-size="11" fill="#5c564c">Qwen3.5-9B-Base</text>
+
+        <polygon points="220,90 300,90 300,80 330,90 300,100 300,90" fill="#57534e"/>
+        <text x="275" y="70" text-anchor="middle" font-size="11" fill="#0f6b5c">SFT</text>
+        <text x="275" y="118" text-anchor="middle" font-size="10" fill="#5c564c">user/assistant の対</text>
+
+        <rect x="335" y="30" width="150" height="120" rx="10" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="410" y="55" text-anchor="middle" font-size="13">SFT 済み</text>
+        <text x="410" y="80" text-anchor="middle" font-size="11" fill="#5c564c">型で答える</text>
+        <text x="410" y="100" text-anchor="middle" font-size="11" fill="#5c564c">まだ好みは粗い</text>
+
+        <polygon points="485,90 540,90 540,80 570,90 540,100 540,90" fill="#57534e"/>
+        <text x="527" y="70" text-anchor="middle" font-size="11" fill="#b45309">選好最適化</text>
+        <text x="527" y="118" text-anchor="middle" font-size="10" fill="#5c564c">良い/悪いの対、報酬</text>
+
+        <rect x="575" y="30" width="130" height="120" rx="10" fill="#fef3c7" stroke="#b45309"/>
+        <text x="640" y="55" text-anchor="middle" font-size="13">Instruct</text>
+        <text x="640" y="80" text-anchor="middle" font-size="11" fill="#5c564c">拒否、thinking、</text>
+        <text x="640" y="100" text-anchor="middle" font-size="11" fill="#5c564c">丁寧さもここで付く</text>
+        <text x="640" y="120" text-anchor="middle" font-size="11" fill="#5c564c">Qwen3.5-9B</text>
+
+        <text x="20" y="185" font-size="12" fill="#1c1915">重みの形は 3 つとも同じ。値だけが右へ行くほど「assistant の型」に寄る。フェーズ 15 は左から 2 つ目の矢印を、100 件で小さくやる。</text>
+      </svg>
+      <figcaption>事後学習（post-training）= SFT + 選好最適化。Instruct はこの結果。</figcaption>
+    </figure>
+    <div class="callout def">
+      <strong>SFT</strong>（Supervised Fine-Tuning）: 「user の入力 → 望ましい assistant の出力」の対を、事前学習と同じ次トークン損失で学ぶ。損失は普通 assistant 側だけに掛ける（<a href="learn-sft-lora.html">ノート B</a> の completion-only）。<br/>
+      <strong>選好最適化</strong>: 同じ入力に対する「良い出力 / 悪い出力」の対や報酬で、良い方の確率を上げる。DPO、GRPO などはここ。今回の弧ではやらない。
+    </div>
+    <p>フェーズ 9 で見た「同じ chat template を付けても Base は続きを書く」の答えはここにある。テンプレは <strong>入力の型</strong>を揃えるだけで、「その型のあとに assistant らしい答えが来る」という確率分布は <strong>重みの値</strong>に入っている。テンプレは Instruct が学習時に見た型と推論時の型を一致させるための約束で、Base はその約束を知らない。</p>
+    <p>thinking（<code>&lt;think&gt;</code> で先に考える）、拒否（安全のために断る）、日本語の丁寧さ、JSON だけ返す指示追従。フェーズ 7 の 3 本で見た振る舞いは全部、この事後学習で <strong>値</strong>として入ったものである。</p>
+    <div class="callout warn">
+      混同しないこと: 「Instruct = Base + system プロンプト」ではない。system プロンプトは入力側の文字列で、重みを変えない。Base に「あなたは親切なアシスタントです」と付けても、Base は「アシスタントという設定の小説の続き」を書くかもしれない。
+    </div>
+
+    <h2 id="cost">7. 推論のコストの出どころ</h2>
+    <p>1 節の縦の流れを 1 トークンごとに通る。このとき GPU は <strong>全部の重みを VRAM から一度読む</strong>。9B Q4 なら約 5.3 GB を、1 トークンごとに。</p>
+    <p>計算そのもの（掛け算）は GPU にとって軽い。重いのは読み出しである。だから decode（1 トークンずつ生成）の速度は、おおよそ次で決まる。</p>
+    <pre><code>decode tok/s ≈ VRAM 帯域 / 重みのバイト数</code></pre>
+    <table>
+      <thead><tr><th>実測</th><th>重み</th><th>帯域（カタログ）</th><th>紙上</th><th>実測 Gen</th></tr></thead>
+      <tbody>
+        <tr><td>フェーズ 7: 9B Q4、RTX 5060</td><td>5.3 GB</td><td>約 448 GB/s</td><td>約 85 tok/s</td><td><strong>66</strong> tok/s</td></tr>
+        <tr><td>フェーズ 5: 7B Q4、RTX 5060</td><td>4.4 GB</td><td>約 448 GB/s</td><td>約 100 tok/s</td><td><strong>78</strong> tok/s</td></tr>
+        <tr><td>フェーズ 5: 7B Q5、RTX 5060</td><td>5.1 GB</td><td>約 448 GB/s</td><td>約 88 tok/s</td><td><strong>69</strong> tok/s</td></tr>
+        <tr><td>フェーズ 11: 27B Q4、L4</td><td>16 GB</td><td>約 300 GB/s</td><td>約 19 tok/s</td><td><strong>14.5</strong> tok/s</td></tr>
+      </tbody>
+    </table>
+    <p>紙上の 7–8 割に実測が落ちるのは、KV cache の読み書きや層間の待ちがあるため。それでも <strong>並びは帯域 / バイト数で説明できる</strong>。Q5 が Q4 より遅いのは「計算が重い」のではなく「読むバイトが多い」から。</p>
+    <p>フェーズ 7 の 27B（<code>-ngl 30</code>、3.7 tok/s）が極端に遅いのは、GPU に載らない層を CPU が処理し、CPU 側の RAM 帯域（数十 GB/s）で残りの重みを読んでいるから。<code>-ngl</code> を 32 以上にして VRAM が 7880 MiB で頭打ちになり decode が落ちたのは、GPU 側で溢れたデータのやり取りが増えたため。</p>
+    <p>一方 <strong>prompt eval</strong>（入力の一括処理）は速い。フェーズ 7 の 9B で約 188 tok/s、L4 の 27B で 83.9 tok/s。プロンプトの全位置を <strong>1 回の forward でまとめて</strong>通せるので、重みを 1 回読めば何百トークンも処理できる。decode は 1 トークンごとに読み直すので、ここに差が出る。</p>
+    <div class="callout machine">
+      学習（フェーズ 15）はこの forward に backward が足される。1 ステップで重みを読み、活性化を保存し、勾配を計算して optimizer を回す。読むバイト数は推論より多く、VRAM には重み以外に活性化・勾配・optimizer 状態が乗る。その算数は <a href="learn-sft-lora.html">ノート B</a> の 2 節。
+    </div>
+
+    <h2 id="quiz">8. 確認問題</h2>
+    <details>
+      <summary>Q1. Qwen3.5-9B を bf16（1 重み 2 バイト）でそのまま置くと何 GB か。8GB GPU に載るか。</summary>
+      <p>約 9 × 10⁹ × 2 バイト ≈ <strong>18 GB</strong>。載らない。Q4_K_M（実測 5.3 GB）にして初めて載る。フェーズ 14 で 2B を bf16 で読むときは 約 4 GB で、これは載る。</p>
+    </details>
+    <details>
+      <summary>Q2. Base モデルに Instruct と同じ chat template を付けて推論すると、Instruct と同じように答えるか。</summary>
+      <p>答えない。テンプレは入力の型を揃えるだけで、「その型の続きに assistant らしい答えが来る」という分布は重みの値に入っている。Base はその値を持っていないので、続きを書く（フェーズ 9 / 13 の実測）。</p>
+    </details>
+    <details>
+      <summary>Q3. <code>-c 2048</code> から <code>-c 8192</code> にすると VRAM が増える。増えたのは重みか、KV cache か。</summary>
+      <p>KV cache。重みはコンテキスト長と無関係で 1 バイトも増えない。フェーズ 3 で 7B Q4 が 4544 → 4886 MiB になった +342 MiB は、層ごと・位置ごとの K と V の保存箱を 4 倍確保した分。</p>
+    </details>
+    <details>
+      <summary>Q4. 同じ RTX 5060 で 7B Q4 が 78 tok/s、Q5 が 69 tok/s。Q5 が遅いのは計算が重いからか。</summary>
+      <p>違う。decode 速度はおおよそ「帯域 / 重みのバイト数」で決まり、Q5 は読むバイトが約 15% 多い（4.4 → 5.1 GB）。計算量はほぼ同じ。</p>
+    </details>
+    <details>
+      <summary>Q5. 事前学習で最適化している量は何か。「質問に答える能力」はどこで付くか。</summary>
+      <p>次トークンの cross-entropy 損失（正解トークンの −log p の平均）だけ。「質問に答える」は事後学習（SFT → 選好最適化）で、user / assistant の対を同じ損失で学ぶことによって、重みの値として付く。</p>
+    </details>
+
+    <h2 id="this-run">9. この検証の数字</h2>
+    <div class="callout machine">
+      <ul>
+        <li>フェーズ 1: 「WSLからローカルLLMを動かしたい。」は raw 14 トークン、chat template を付けると 43 トークン。テンプレが system 文と role の区切りを足している</li>
+        <li>フェーズ 3: 7B Q4 で <code>-ngl 99</code> 80 tok/s、<code>-ngl 0</code> 6.4 tok/s。<code>-c 2048 → 8192</code> で VRAM 4544 → 4886 MiB（KV cache）</li>
+        <li>フェーズ 5: 7B Q4 78 tok/s / 4544 MiB、Q5 69 tok/s / 5204 MiB。GPU 78 vs CPU 6 tok/s</li>
+        <li>フェーズ 7: 9B Q4 <code>-ngl 99 -c 8192</code> で Gen 65.9 tok/s、Prompt 188.7 tok/s、VRAM 5400 MiB。27B Q4 <code>-ngl 30 -t 12</code> で 3.7 tok/s、7714 MiB</li>
+        <li>フェーズ 9: 9B-Base は同じテンプレで続きを書く（記録はフェーズ 13 の表で厚くする）</li>
+        <li>フェーズ 11 / 12: L4 24GB で 27B Q4 <code>-ngl 99</code> Gen 14.5 tok/s、Prompt 83.9 tok/s、VRAM 15320 MiB</li>
+      </ul>
+    </div>
+    <p>次に読むのは <a href="learn-sft-lora.html">ノート B: SFT と LoRA</a>。ここで固定した「重みの形」「forward」「Base と Instruct の差」を、学習側から見直す。</p>
+
+    <footer>
+      フェーズ 13 の前に読む学習ノート A。数字の正本は <code>results/</code> の各ファイル。用語の初出定義はこのノートと <code>notes/pipeline.md</code>。
+    </footer>
+  </div>
+</body>
+</html>

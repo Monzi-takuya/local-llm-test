@@ -71,13 +71,27 @@
 
 ローカル 27B は部分 GPU で 3.7 tok/s。対話速度にするなら GCP の **L4 24GB / `g2-standard-8`（東京）**。T4 16GB は 27B Q4 に足りない。
 
-実測（プロジェクト `monzi-sandbox`、gcloud JSON）: 東京 a/b/c に `nvidia-l4` あり。地域 `NVIDIA_L4_GPUS=1`。2026-09-14 夜に **`GPUS_ALL_REGIONS=1`**（申請が約 1 分で承認）。2026-09-15: 東京 c で `g2-standard-8` を立て、27B Q4 `-ngl 99` は Gen **14.5 tok/s**、VRAM 15320 MiB。VM は stop、ディスク残。詳細 [`../results/11-gcp-l4.md`](../results/11-gcp-l4.md)。
+実測（プロジェクト `monzi-sandbox`、gcloud JSON）: 東京 a/b/c に `nvidia-l4` あり。地域 `NVIDIA_L4_GPUS=1`。2026-09-14 夜に **`GPUS_ALL_REGIONS=1`**（申請が約 1 分で承認）。2026-09-15: 東京 c で `g2-standard-8` を立て、27B Q4 `-ngl 99` は Gen **14.5 tok/s**、VRAM 15320 MiB。同じ日に IAP `-L` で llama-server 付属 UI が **14.6 tok/s**。VM は stop、ディスク残。詳細 [`../results/11-gcp-l4.md`](../results/11-gcp-l4.md)、[`../results/12-gcp-webui.md`](../results/12-gcp-webui.md)。
 
 9B 日常をクラウドに載せる理由は薄い（ローカル 66 tok/s の方が速く、限界費用は電気）。
 
+## 事後学習（フェーズ 13–17、2026-09-15 計画）
+
+「ファインチューニングをやらない」は推論を先に固定するための制約だった。フェーズ 12 で推論の弧が閉じたので、**Qwen3.5-2B への bf16 LoRA SFT に限って** 解禁する。詳細は [`../phases/13-name-split-probe.md`](../phases/13-name-split-probe.md) 以降。
+
+| 項目 | 値 |
+| --- | --- |
+| 学習対象 | `Qwen/Qwen3.5-2B`（Instruct）。任意で `Qwen3.5-2B-Base`（フェーズ 17） |
+| 手法 | LoRA（rank 8–16）、completion-only loss、bf16。QLoRA / 全パラメータ / DPO はやらない |
+| 場所 | 手元 RTX 5060 8GB。2B bf16 重み約 4 GB + LoRA で 8GB 内の見込み（フェーズ 14–15 で実測） |
+| venv | `.venv-train`（Python 3.12、`torch` は **cu128 以降の wheel**。CUDA Toolkit は入れない） |
+| 置き場 | safetensors `~/models/hf/`、adapter `~/models/lora/`、merge 後 GGUF は `~/models/`。すべて git 外 |
+| Blackwell | sm_120 は PyTorch 2.7+ の CUDA 12.8 ビルドで対応。cu124 以前の wheel は kernel 無しで落ちる |
+| L4 に行く条件 | torch / peft が sm_120 か Ubuntu 26.04 で止まり、**人が許可したとき**だけ。同じ 2B・同じ JSONL。終わったら stop |
+
 ## 意図的にやらないこと
 
-- vLLM / PyTorch での非量子化フル推論
-- ファインチューニング
+- vLLM / PyTorch での非量子化フル推論（学習時の bf16 forward は除く）
+- ~~ファインチューニング~~ → 2026-09-15: **2B の LoRA SFT のみ解禁**（上の節）。9B 以上の学習、全パラメータ FT、QLoRA、DPO / GRPO は引き続きやらない
 - 32B 級、画像マルチモーダルの本格運用
-- WSL への NVIDIA Linux ドライバ導入
+- WSL への NVIDIA Linux ドライバ導入、CUDA Toolkit（`nvcc`）の導入

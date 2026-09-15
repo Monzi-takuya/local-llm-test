@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SFT と LoRA — 今回やる事後学習の手法（学習ノート B）</title>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --paper: #fffdf8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d0c0;
+      --accent: #0f6b5c;
+      --accent-2: #b45309;
+      --gpu: #1d4ed8;
+      --ok: #166534;
+      --warn: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    header.hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.5rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.35; }
+    h2 {
+      font-size: 1.25rem;
+      margin: 2.2rem 0 0.7rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
+    .lead { font-size: 1.02rem; }
+    .muted { color: var(--muted); }
+    nav.toc {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    nav.toc ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+    nav.toc a { color: var(--accent); }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef7f4;
+      padding: 0.8rem 1rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1rem 0;
+    }
+    .warn { border-left-color: var(--accent-2); background: #fff7ed; }
+    .machine { border-left-color: var(--gpu); background: #eff6ff; }
+    .def { border-left-color: #6b21a8; background: #f5f3ff; }
+    .todo { border-left-color: #9a3412; background: #fef2f2; border-style: dashed; border-width: 0 0 0 4px; }
+    figure.diagram {
+      margin: 1.1rem 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem 0.6rem 0.4rem;
+      overflow-x: auto;
+    }
+    figcaption {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0.2rem 0 0.6rem;
+    }
+    svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", "Noto Sans Mono", monospace;
+      font-size: 0.86em;
+      background: #efe8da;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre {
+      background: #efe8da;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    .tok { display: inline-block; padding: 0.05em 0.4em; margin: 0.1em 0.08em; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 0.85em; }
+    .tok.p { background: #e7e5e4; color: #57534e; text-decoration: line-through; }
+    .tok.c { background: #dcfce7; color: #166534; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #efe8da; }
+    details {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.6rem 0.9rem;
+      margin: 0.6rem 0;
+    }
+    summary { cursor: pointer; font-weight: 600; }
+    footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>SFT と LoRA — 今回やる事後学習の手法</h1>
+      <p class="lead"><a href="learn-llm-basics.html">ノート A</a> で「重みの形」「forward」「Base と Instruct は値だけ違う」を固定した。このノートは、その <strong>値をどう動かすか</strong>。フェーズ 15 でやる「Qwen3.5-2B に姓名分割の LoRA を足す」を、手法として理解するための資料。</p>
+      <p class="muted">読む順: 1–6 はフェーズ 14–15 で手を動かす前に。7–8 はフェーズ 15–16 の結果を見てから読み直す。12 節「この検証の数字」はフェーズ 16 の後に埋める。<span class="tok c">緑</span> と <span class="tok p">灰</span> の色は 4 節の label マスクで使う。</p>
+    </header>
+
+    <nav class="toc" aria-label="目次">
+      <strong>目次</strong>
+      <ol>
+        <li><a href="#train">学習とは何を動かすことか</a></li>
+        <li><a href="#memory">なぜ全パラメータ学習は 8GB に載らないか</a></li>
+        <li><a href="#sft">SFT: 対を 1 本の token 列にする</a></li>
+        <li><a href="#mask">completion-only loss</a></li>
+        <li><a href="#lora">LoRA: 凍らせて、小さな差分だけ学ぶ</a></li>
+        <li><a href="#targets">どの層に当てるか（target_modules）</a></li>
+        <li><a href="#forget">過学習と破滅的忘却</a></li>
+        <li><a href="#merge">merge と量子化</a></li>
+        <li><a href="#map">やらない手法の地図</a></li>
+        <li><a href="#confuse">混同ポイント</a></li>
+        <li><a href="#quiz">確認問題</a></li>
+        <li><a href="#this-run">この検証の数字</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="train">1. 学習とは何を動かすことか</h2>
+    <p>推論は「重みを固定して forward を回す」だった。学習は「forward のあとに <strong>正解との差</strong>を測り、その差が小さくなる方向に <strong>重みを少し動かす</strong>」を繰り返す。1 バッチ分の流れは次の 4 段。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 250" width="720" height="250" role="img" aria-label="1 ステップの学習">
+        <rect x="20" y="30" width="150" height="70" rx="8" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="95" y="55" text-anchor="middle" font-size="12">1. forward</text>
+        <text x="95" y="75" text-anchor="middle" font-size="11" fill="#5c564c">推論と同じ計算</text>
+        <text x="95" y="91" text-anchor="middle" font-size="11" fill="#5c564c">各位置の logits</text>
+        <polygon points="170,65 195,65 195,58 215,65 195,72 195,65" fill="#57534e"/>
+
+        <rect x="220" y="30" width="150" height="70" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="295" y="55" text-anchor="middle" font-size="12">2. loss</text>
+        <text x="295" y="75" text-anchor="middle" font-size="11" fill="#5c564c">正解トークンの −log p</text>
+        <text x="295" y="91" text-anchor="middle" font-size="11" fill="#5c564c">を平均（1 つの数字）</text>
+        <polygon points="370,65 395,65 395,58 415,65 395,72 395,65" fill="#57534e"/>
+
+        <rect x="420" y="30" width="150" height="70" rx="8" fill="#fee2e2" stroke="#9a3412"/>
+        <text x="495" y="55" text-anchor="middle" font-size="12">3. backward</text>
+        <text x="495" y="75" text-anchor="middle" font-size="11" fill="#5c564c">loss を各重みで微分</text>
+        <text x="495" y="91" text-anchor="middle" font-size="11" fill="#5c564c">= 勾配（重みと同じ形）</text>
+        <polygon points="570,65 595,65 595,58 615,65 595,72 595,65" fill="#57534e"/>
+
+        <rect x="600" y="30" width="110" height="70" rx="8" fill="#f5f3ff" stroke="#6b21a8"/>
+        <text x="655" y="55" text-anchor="middle" font-size="12">4. optimizer</text>
+        <text x="655" y="75" text-anchor="middle" font-size="11" fill="#5c564c">W ← W − lr·(…)</text>
+        <text x="655" y="91" text-anchor="middle" font-size="11" fill="#5c564c">AdamW</text>
+
+        <path d="M655,100 C655,150 95,150 95,100" fill="none" stroke="#57534e" stroke-dasharray="4 3"/>
+        <text x="375" y="165" text-anchor="middle" font-size="11" fill="#5c564c">次のバッチで繰り返し。100 件・batch 4 なら 25 step で 1 epoch</text>
+
+        <text x="20" y="205" font-size="12" fill="#1c1915">推論との違い: 2–4 が足される。3 のために forward 途中の値（活性化）を全部覚えておく必要がある。</text>
+        <text x="20" y="228" font-size="12" fill="#1c1915">4 の AdamW は、勾配の移動平均を 2 つ（m と v）重みごとに持つ。つまり重みと同じ形の行列が 2 枚余分に要る。</text>
+      </svg>
+      <figcaption>学習 1 step。「forward + 逆向き 1 パス + 更新」。VRAM に乗るものが推論より増える理由が 3 と 4 にある。</figcaption>
+    </figure>
+    <div class="callout def">
+      <strong>勾配</strong>（gradient）: loss を各重みで偏微分した値。「この重みを少し増やすと loss がどれだけ動くか」。重みと同じ形の行列になる。<br/>
+      <strong>learning rate</strong>（lr）: 勾配の方向にどれだけ動かすかの係数。LoRA では 1e-4 〜 2e-4 が慣習。大きすぎると発散、小さすぎると動かない。<br/>
+      <strong>AdamW</strong>: 勾配の移動平均（m）と二乗の移動平均（v）で 1 重みごとに歩幅を調整する optimizer。重みごとに 2 つの状態を持つ。
+    </div>
+    <p>ノート A の 5 節と同じ loss（cross-entropy）を使う。事前学習も SFT も、<strong>最適化している量は同じ</strong>。違うのはデータ（何兆トークンの生テキストか、100 件の user / assistant 対か）と、どの位置の loss を数えるか（4 節）。</p>
+
+    <h2 id="memory">2. なぜ全パラメータ学習は 8GB に載らないか</h2>
+    <p>推論の VRAM 算は <a href="learn-quantization.html">量子化ノート</a> で「重み + KV cache + ランタイム」だった。学習では 1 節の 3 と 4 のぶんが乗る。2B を素直に全部学習する場合。</p>
+    <table>
+      <thead><tr><th>乗るもの</th><th>形</th><th>2B・bf16 のとき</th></tr></thead>
+      <tbody>
+        <tr><td>重み W</td><td>全パラメータ × 2 バイト</td><td>約 <strong>4 GB</strong></td></tr>
+        <tr><td>勾配</td><td>重みと同じ形 × 2 バイト</td><td>約 <strong>4 GB</strong></td></tr>
+        <tr><td>AdamW の m と v</td><td>重みと同じ形 × 2 枚 × 4 バイト（fp32 で持つのが普通）</td><td>約 <strong>16 GB</strong></td></tr>
+        <tr><td>活性化</td><td>seq × batch × d_model × 層数 × …</td><td>seq 256・batch 4 なら数百 MB 〜 1 GB</td></tr>
+        <tr><td><strong>合計</strong></td><td></td><td>約 <strong>24 GB 超</strong>。RTX 5060 8GB に載らない</td></tr>
+      </tbody>
+    </table>
+    <p>重み 4 GB は載るのに、学習にすると 6 倍になる。<strong>「動かす重みの数」がそのまま勾配と optimizer 状態の量になる</strong>のが理由。ここから、「動かす重みを減らせば載る」という発想が LoRA（5 節）になる。</p>
+    <div class="callout warn">
+      推論の Q4 GGUF（2B なら約 1.3 GB）は学習に使えない。Q4 は整数 + scale の保存形式で、勾配を流す先の連続値の重みではない（<a href="learn-quantization.html">量子化ノート</a> 3 節）。学習は Hugging Face の bf16 safetensors から始め、終わってから Q4 に戻す（8 節）。QLoRA は「本体を 4bit で凍らせて LoRA だけ学ぶ」方式で、これは載るが今回はやらない（9 節）。
+    </div>
+
+    <h2 id="sft">3. SFT: 対を 1 本の token 列にする</h2>
+    <p>学習データは「user の入力」と「望ましい assistant の出力」の対。だがモデルに入るのは <strong>1 本の token 列</strong>である。chat template で繋いで tokenize する。</p>
+    <pre><code>&lt;|im_start|&gt;user
+次の日本人の氏名を姓と名に分け、JSON だけを返してください。キーは sei と mei。説明は不要です。
+氏名: 山田太郎&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant
+{"sei":"山田","mei":"太郎"}&lt;|im_end|&gt;</code></pre>
+    <p>フェーズ 1 で「14 トークンの文がテンプレで 43 トークンになる」を見た。SFT の 1 サンプルはあの 43 トークン相当の列に、答えの JSON（10 トークン前後）と終端 <code>&lt;|im_end|&gt;</code> を繋いだもの。全体で 60–70 トークン。seq 256 で十分に収まる。</p>
+    <div class="callout">
+      推論時のテンプレと学習時のテンプレは <strong>同じ文字列</strong>でなければならない。Instruct が学習時に見た型と推論時の型が一致していることが、指示追従の前提だった（ノート A 6 節）。フェーズ 15 では <code>apply_chat_template(..., tokenize=False)</code> を print して、フェーズ 13 のプロンプトと同じかを目で確認する。
+    </div>
+    <p>Qwen3.5 のテンプレは non-thinking でも空の <code>&lt;think&gt;&lt;/think&gt;</code> を assistant 側に差し込むことがある。それがプロンプト側に入るか答え側に入るかで、次の節のマスクの範囲が変わる。</p>
+
+    <h2 id="mask">4. completion-only loss</h2>
+    <p>1 本の token 列のどの位置で loss を数えるか。事前学習は全位置。SFT では普通、<strong>答え側だけ</strong>。</p>
+    <p>PyTorch の cross-entropy は、正解 label に <code>-100</code> が入っている位置を <strong>無視する</strong>。だから「プロンプト側の label を全部 -100 にする」だけで、答え側だけに勾配が流れる。</p>
+    <figure class="diagram">
+      <div style="padding: 0.6rem 0.8rem; font-size: 0.95rem; line-height: 2.1;">
+        <div><span class="muted" style="font-size:0.8rem">input_ids（全部モデルに入る）</span></div>
+        <span class="tok p">&lt;|im_start|&gt;</span><span class="tok p">user</span><span class="tok p">\n</span><span class="tok p">次の</span><span class="tok p">日本人の</span><span class="tok p">氏名を</span><span class="tok p">…</span><span class="tok p">氏名</span><span class="tok p">:</span><span class="tok p">山田</span><span class="tok p">太郎</span><span class="tok p">&lt;|im_end|&gt;</span><span class="tok p">\n</span><span class="tok p">&lt;|im_start|&gt;</span><span class="tok p">assistant</span><span class="tok p">\n</span>
+        <span class="tok c">{"</span><span class="tok c">sei</span><span class="tok c">":"</span><span class="tok c">山田</span><span class="tok c">","</span><span class="tok c">mei</span><span class="tok c">":"</span><span class="tok c">太郎</span><span class="tok c">"}</span><span class="tok c">&lt;|im_end|&gt;</span>
+        <div style="margin-top:0.4rem"><span class="muted" style="font-size:0.8rem">labels: <span class="tok p">灰 = -100（loss に入れない）</span> <span class="tok c">緑 = そのトークン ID（loss に入れる）</span></span></div>
+      </div>
+      <figcaption>completion-only。プロンプトは読むが当てさせない。答えと終端だけを当てさせる。フェーズ 15 の <code>--dry-run</code> はこの緑だけを decode して表示する。</figcaption>
+    </figure>
+    <p>なぜプロンプト側を外すか。外さないと、モデルは「次の日本人の氏名を姓と名に…」という <strong>プロンプトの文面を当てる</strong>ことにも勾配を使う。100 件全部に同じ文面があるので、そこは 1 epoch で完全に暗記され、loss の大半をプロンプト暗記が占める。答えの JSON を学ぶ信号が薄まる。</p>
+    <p>終端 <code>&lt;|im_end|&gt;</code> を緑に含めるのも大事。含めないと「JSON を出したあとに止まる」ことを学ばず、生成が続いてしまうモデルになる。</p>
+    <div class="callout warn">
+      ここが <strong>手法確認の中心</strong>。Unsloth や高レベル API はこのマスクを自動でやってくれるが、やってくれた結果を見なければ「SFT を理解した」とは言えない。フェーズ 15 の合格条件に「labels の decode に user 文が無い」を入れているのはそのため。
+    </div>
+
+    <h2 id="lora">5. LoRA: 凍らせて、小さな差分だけ学ぶ</h2>
+    <p>2 節の算数で、動かす重みの数がそのまま VRAM になった。LoRA は「元の重み <code>W</code> は凍らせて（勾配を計算しない）、<strong>小さな差分だけ</strong>を学ぶ」方式。</p>
+    <div class="callout def">
+      <strong>LoRA</strong>（Low-Rank Adaptation）: 重み <code>W</code>（<code>d_out × d_in</code>）に対して、<code>W' = W + (α / r) · B·A</code> とする。<code>A</code> は <code>r × d_in</code>、<code>B</code> は <code>d_out × r</code>。学習するのは A と B だけ。<code>r</code>（rank）は 4〜64 程度の小さい数。<code>α</code>（alpha）はスケール係数で、慣習的に <code>α = 2r</code>。
+    </div>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 230" width="720" height="230" role="img" aria-label="LoRA の形">
+        <rect x="30" y="40" width="140" height="140" fill="#e7e5e4" stroke="#57534e"/>
+        <text x="100" y="105" text-anchor="middle" font-size="13">W</text>
+        <text x="100" y="125" text-anchor="middle" font-size="11" fill="#5c564c">d_out × d_in</text>
+        <text x="100" y="145" text-anchor="middle" font-size="11" fill="#5c564c">凍結（勾配なし）</text>
+        <text x="100" y="200" text-anchor="middle" font-size="11" fill="#5c564c">例: 2048 × 2048 = 4.2M</text>
+
+        <text x="200" y="115" font-size="20">+</text>
+
+        <rect x="240" y="40" width="30" height="140" fill="#dcfce7" stroke="#166534"/>
+        <text x="255" y="115" text-anchor="middle" font-size="13">B</text>
+        <text x="255" y="200" text-anchor="middle" font-size="11" fill="#5c564c">d_out × r</text>
+
+        <text x="290" y="115" font-size="16">·</text>
+
+        <rect x="315" y="40" width="140" height="30" fill="#dcfce7" stroke="#166534"/>
+        <text x="385" y="60" text-anchor="middle" font-size="13">A</text>
+        <text x="385" y="90" text-anchor="middle" font-size="11" fill="#5c564c">r × d_in</text>
+        <text x="385" y="200" text-anchor="middle" font-size="11" fill="#166534">学習するのはここだけ</text>
+        <text x="385" y="160" text-anchor="middle" font-size="11" fill="#5c564c">r = 8 なら 8×(2048+2048) = 32,768</text>
+        <text x="385" y="178" text-anchor="middle" font-size="11" fill="#5c564c">= W の 0.78%</text>
+
+        <text x="480" y="115" font-size="20">=</text>
+
+        <rect x="520" y="40" width="140" height="140" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="590" y="105" text-anchor="middle" font-size="13">W'</text>
+        <text x="590" y="125" text-anchor="middle" font-size="11" fill="#5c564c">形は W と同じ</text>
+        <text x="590" y="145" text-anchor="middle" font-size="11" fill="#5c564c">merge すれば 1 枚に戻る</text>
+      </svg>
+      <figcaption>B·A は「rank r の行列」で、W と同じ形だが表現できる方向が r 本しかない。それでも SFT 級の小さな調整には足りる、というのが LoRA の経験則。</figcaption>
+    </figure>
+    <p>2 節の算数に戻す。動かすのは A と B だけなので、勾配も AdamW の m と v も <strong>A と B の分だけ</strong>。W は bf16 のまま読み取り専用で 4 GB。</p>
+    <table>
+      <thead><tr><th>乗るもの</th><th>全パラメータ学習</th><th>LoRA（r=8、全線形層に当てて数 M 個の場合）</th></tr></thead>
+      <tbody>
+        <tr><td>重み W</td><td>4 GB</td><td>4 GB（凍結。bf16 のまま）</td></tr>
+        <tr><td>勾配</td><td>4 GB</td><td>数 MB 〜 数十 MB</td></tr>
+        <tr><td>AdamW m, v</td><td>16 GB</td><td>数十 MB</td></tr>
+        <tr><td>活性化</td><td>〜1 GB</td><td>〜1 GB（backward のためにこれは残る）</td></tr>
+        <tr><td><strong>合計</strong></td><td>約 24 GB</td><td>約 <strong>5–6 GB</strong>。8GB に載る</td></tr>
+      </tbody>
+    </table>
+    <p>活性化が残るのは、backward で A と B の勾配を出すために forward 途中の値が要るから。ここが seq と batch で伸びる。8GB を超えたときに「batch 1 → seq 短縮 → gradient checkpointing（活性化を捨てて backward 時に再計算する）」の順で削るのは、この行を削っている。</p>
+    <p>初期値は <code>B = 0</code>、<code>A</code> は乱数。学習開始時点で <code>B·A = 0</code> なので、<strong>LoRA を付けた直後のモデルは元と完全に同じ出力</strong>。ここから差分が育つ。フェーズ 15 の「学習前 bf16」の列は、この状態と一致するはず。</p>
+    <div class="callout">
+      <code>print_trainable_parameters()</code> が出す「trainable params / all params / trainable%」は、この表の左列と右列の比。r=8 で 7 種の線形層に当てると全体の 1% 未満が典型。フェーズ 15 でこの数字を書き、11 節の Q3 を自分の手で検算する。
+    </div>
+
+    <h2 id="targets">6. どの層に当てるか（target_modules）</h2>
+    <p>LoRA は「この名前の線形層に B·A を足す」と指定する。ノート A 2 節の 7 つの名前が候補。</p>
+    <table>
+      <thead><tr><th>グループ</th><th>名前</th><th>何をしている層か</th><th>当てる意味</th></tr></thead>
+      <tbody>
+        <tr><td>attention</td><td><code>q_proj</code> <code>k_proj</code> <code>v_proj</code> <code>o_proj</code></td><td>どの位置を参照するか、参照した内容をどう混ぜるか</td><td>「氏名: の直後を見る」「姓の切れ目を見る」のような <em>参照の仕方</em> を調整</td></tr>
+        <tr><td>FFN</td><td><code>gate_proj</code> <code>up_proj</code> <code>down_proj</code></td><td>参照した内容を書き換える。知識が多く入る</td><td>「山田は姓」「太郎は名」のような <em>中身の対応</em> を調整。パラメータが大きいので LoRA 側も増える</td></tr>
+        <tr><td>Gated DeltaNet 層</td><td>（フェーズ 14 で実測。<code>in_proj_*</code> / <code>out_proj</code> 系の見込み）</td><td>過去を固定サイズの状態に畳む線形 attention</td><td>attention の 4 つの名前だけ指定すると <strong>この層は素通り</strong>する。含めるかは実験条件</td></tr>
+        <tr><td>当てない</td><td><code>embed_tokens</code> <code>lm_head</code></td><td>語彙 ↔ ベクトル</td><td>語彙側を動かすと影響が広い。今回は触らない</td></tr>
+      </tbody>
+    </table>
+    <p>なぜ「名前で選ぶ」という操作が要るか。<code>peft</code> の既定はよく知られたアーキテクチャの名前を知っているが、Qwen3.5 のように <strong>層ごとに構造が違う</strong>モデルでは、既定が一部の層を取りこぼす。<code>named_modules()</code> で全部の線形層を列挙し、どの名前が何層にあるかを自分で確認する。それがフェーズ 14 の本体。</p>
+    <div class="callout todo">
+      <strong>フェーズ 14 で埋める</strong>: <code>named_modules()</code> の出力の抜粋をここに貼る。形式は「名前 × 個数 weight (out, in)」。attention 層と DeltaNet 層の名前の違い、<code>k_proj</code> / <code>v_proj</code> が <code>q_proj</code> より小さいこと（GQA）、FFN の中間次元、をこの表の右に書き足す。フェーズ 15 で採用した <code>target_modules</code> もここに明記する。
+    </div>
+
+    <h2 id="forget">7. 過学習と破滅的忘却</h2>
+    <p>100 件で LoRA を足すと、出力の分布が「姓名 JSON 側」に寄る。寄せ方が強いと、2 種類の副作用が出る。<strong>同じ機構</strong>から出るので、片方だけ避けるのは難しい。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 230" width="720" height="230" role="img" aria-label="過学習と忘却">
+        <rect x="20" y="20" width="220" height="190" rx="10" fill="#fff7ed" stroke="#b45309"/>
+        <text x="130" y="45" text-anchor="middle" font-size="13" fill="#9a3412">過学習（overfitting）</text>
+        <text x="130" y="75" text-anchor="middle" font-size="11">train の名前: 当たる</text>
+        <text x="130" y="95" text-anchor="middle" font-size="11">held-out の名前: 外す</text>
+        <text x="130" y="125" text-anchor="middle" font-size="11" fill="#5c564c">「切り方」ではなく</text>
+        <text x="130" y="143" text-anchor="middle" font-size="11" fill="#5c564c">「この 100 件の答え」を覚えた</text>
+        <text x="130" y="175" text-anchor="middle" font-size="11" fill="#5c564c">見る場所: train 20 と held-out 20 の差</text>
+        <text x="130" y="195" text-anchor="middle" font-size="11" fill="#5c564c">loss が 0.1 を切ったら疑う</text>
+
+        <rect x="250" y="20" width="220" height="190" rx="10" fill="#fee2e2" stroke="#9a3412"/>
+        <text x="360" y="45" text-anchor="middle" font-size="13" fill="#9a3412">破滅的忘却</text>
+        <text x="360" y="75" text-anchor="middle" font-size="11">「こんにちは」→ 姓名 JSON</text>
+        <text x="360" y="95" text-anchor="middle" font-size="11">Python を書けなくなる</text>
+        <text x="360" y="125" text-anchor="middle" font-size="11" fill="#5c564c">分布全体が JSON 側に寄り、</text>
+        <text x="360" y="143" text-anchor="middle" font-size="11" fill="#5c564c">元々の会話の分布が押し出された</text>
+        <text x="360" y="175" text-anchor="middle" font-size="11" fill="#5c564c">見る場所: q-ja / q-code の 3 本</text>
+        <text x="360" y="195" text-anchor="middle" font-size="11" fill="#5c564c">学習前と並べる</text>
+
+        <rect x="480" y="20" width="220" height="190" rx="10" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="590" y="45" text-anchor="middle" font-size="13" fill="#0f6b5c">どのつまみが効くか</text>
+        <text x="590" y="75" text-anchor="middle" font-size="11">epoch ↑ → 両方 ↑</text>
+        <text x="590" y="95" text-anchor="middle" font-size="11">lr ↑ → 両方 ↑（速く）</text>
+        <text x="590" y="115" text-anchor="middle" font-size="11">件数 ↑（多様） → 過学習 ↓</text>
+        <text x="590" y="135" text-anchor="middle" font-size="11">rank ↑ → 覚えられる量 ↑</text>
+        <text x="590" y="155" text-anchor="middle" font-size="11">一般会話を混ぜる → 忘却 ↓</text>
+        <text x="590" y="185" text-anchor="middle" font-size="11" fill="#5c564c">今回は epoch 1 と 3 だけ変える</text>
+      </svg>
+      <figcaption>過学習は「データの中での偏り」、忘却は「データの外への影響」。両方とも「分布を寄せた」結果。</figcaption>
+    </figure>
+    <p>フェーズ 15 でこれを <strong>どちらが先に出るか</strong>として観察する。100 件・epoch 3 は普通に考えて両方出る設定で、それを見るのが目的。合格は精度ではなく、「e1 では型だけ付いて忘却は無かった」「e3 で held-out が落ちて q-ja が JSON になった」のような <strong>差の記録</strong>。</p>
+    <div class="callout">
+      本番でこれを避けるには、一般的な会話データを混ぜる（忘却対策）、held-out で早期停止する（過学習対策）、rank と lr を下げる、などがある。今回は <strong>避けない</strong>。見えないと理解できないから。
+    </div>
+
+    <h2 id="merge">8. merge と量子化</h2>
+    <p>学習が終わると、手元にあるのは「元の W（bf16、4 GB）」と「A, B（数十 MB の adapter）」。llama.cpp で動かすには 2 つの道がある。</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 720 220" width="720" height="220" role="img" aria-label="merge か adapter か">
+        <rect x="20" y="80" width="130" height="60" rx="8" fill="#e7e5e4" stroke="#57534e"/>
+        <text x="85" y="105" text-anchor="middle" font-size="12">W（bf16）</text>
+        <text x="85" y="125" text-anchor="middle" font-size="11" fill="#5c564c">+ A, B（bf16）</text>
+
+        <polygon points="150,95 200,60 200,52 225,62 200,72 200,66 150,101" fill="#0f6b5c"/>
+        <rect x="230" y="20" width="150" height="60" rx="8" fill="#eef7f4" stroke="#0f6b5c"/>
+        <text x="305" y="42" text-anchor="middle" font-size="12">道 1: merge</text>
+        <text x="305" y="62" text-anchor="middle" font-size="11" fill="#5c564c">W' = W + (α/r)·B·A を計算</text>
+        <polygon points="380,50 410,50 410,43 430,50 410,57 410,50" fill="#57534e"/>
+        <rect x="435" y="20" width="120" height="60" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="495" y="42" text-anchor="middle" font-size="12">GGUF f16</text>
+        <text x="495" y="62" text-anchor="middle" font-size="11" fill="#5c564c">約 4 GB</text>
+        <polygon points="555,50 585,50 585,43 605,50 585,57 585,50" fill="#57534e"/>
+        <rect x="610" y="20" width="95" height="60" rx="8" fill="#fef3c7" stroke="#b45309"/>
+        <text x="657" y="42" text-anchor="middle" font-size="12">Q4_K_M</text>
+        <text x="657" y="62" text-anchor="middle" font-size="11" fill="#5c564c">約 1.3 GB</text>
+
+        <polygon points="150,125 200,160 200,152 225,162 200,172 200,166 150,131" fill="#b45309"/>
+        <rect x="230" y="130" width="150" height="60" rx="8" fill="#fff7ed" stroke="#b45309"/>
+        <text x="305" y="152" text-anchor="middle" font-size="12">道 2: adapter のまま</text>
+        <text x="305" y="172" text-anchor="middle" font-size="11" fill="#5c564c">A, B だけ GGUF 化</text>
+        <polygon points="380,160 410,160 410,153 430,160 410,167 410,160" fill="#57534e"/>
+        <rect x="435" y="130" width="270" height="60" rx="8" fill="#eff6ff" stroke="#1d4ed8"/>
+        <text x="570" y="152" text-anchor="middle" font-size="12">公式 Q4 本体 + --lora adapter.gguf</text>
+        <text x="570" y="172" text-anchor="middle" font-size="11" fill="#5c564c">実行時に足す。差分は bf16 のまま</text>
+      </svg>
+      <figcaption>フェーズ 16 の本筋は道 1。道 2 は任意で、両方の結果を比べると Q4 の丸めが差分に何をしたかが見える。</figcaption>
+    </figure>
+    <p>道 1 で気にする点。<code>B·A</code> は <strong>小さい値</strong>の足し込みで、Q4 は重みを 32 個ブロックの scale で丸める（<a href="learn-quantization.html">量子化ノート</a> 3 節）。差分がブロックの丸め幅より小さければ、<strong>Q4 化で差分が一部消える</strong>可能性がある。adapter 直後（bf16）と merge → Q4 で held-out の結果を並べるのは、これを見るため。1–2 件のずれは丸め、10 件ずれるなら merge かテンプレの問題。</p>
+    <p>道 2 は本体を Q4 のまま、差分を bf16 で持つ。丸めの入り方が違うので、道 1 と結果が微妙に違いうる。速度は少し落ちる（毎トークン A, B の計算が足される）。</p>
+    <div class="callout warn">
+      merge の順序は <strong>bf16 で足してから量子化</strong>。Q4 にしてから足すことはできない（Q4 は整数 + scale で、足し算の対象になる連続値ではない）。
+    </div>
+
+    <h2 id="map">9. やらない手法の地図</h2>
+    <p>この弧は「bf16 LoRA の SFT」だけ。周りに何があるかを、<strong>何を動かすか</strong>の 1 行で置いておく。</p>
+    <table>
+      <thead><tr><th>手法</th><th>何を動かすか</th><th>今回やらない理由</th></tr></thead>
+      <tbody>
+        <tr><td>全パラメータ FT</td><td>W 全部。勾配・optimizer も全部</td><td>2 節の算数で 8GB に載らない。9B なら 100 GB 級</td></tr>
+        <tr><td>QLoRA</td><td>W を 4bit で凍結、LoRA だけ bf16 で学ぶ</td><td>7B 級を 8GB に載せる技。2B は bf16 LoRA で載るので、W が 4bit である分だけ「何を更新しているか」が見えにくくなる</td></tr>
+        <tr><td>DPO</td><td>同じ入力への「良い / 悪い」出力の対で、良い方の確率を上げる。loss が SFT と違う</td><td>SFT で「型は付いたが好みが粗い」が見えてから。姓名分割で良い / 悪いの対を作る意味が薄い</td></tr>
+        <tr><td>GRPO / RL 系</td><td>出力をサンプルして報酬で評価し、報酬が高い方向に寄せる</td><td>報酬関数（正解と一致で +1 など）は作れるが、SFT の理解が先</td></tr>
+        <tr><td>蒸留</td><td>大きいモデルの出力分布を小さいモデルに真似させる</td><td>9B の出力で 2B を学習する形。データ作りの話が主になる</td></tr>
+        <tr><td>継続事前学習</td><td>生テキストで全位置 loss（4 節のマスクなし）</td><td>ドメイン知識を足す用。今回の目的と違う</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="confuse">10. 混同ポイント</h2>
+    <ul>
+      <li><strong>Word2vec の追加学習と LoRA</strong>: Word2vec は語彙ベクトルを足す・更新する。LoRA は語彙側（<code>embed_tokens</code>）を触らず、層の中の線形層に差分を足して <strong>生成分布</strong>を対でずらす。「山田」のベクトルが変わるのではなく、「氏名: 山田太郎 の続きに何が来るか」の確率が変わる</li>
+      <li><strong>KV cache と label マスク</strong>: KV cache は推論で過去の K, V を保存して計算を省く仕組み。label の -100 は学習でどの位置の loss を数えるかの指定。両方「位置ごとに何かを持つ」が、片方は速度、片方は勾配の話</li>
+      <li><strong>temperature と learning rate</strong>: 両方「どれだけ動くか」に見える。temperature は推論時に分布をならす係数で、重みは変えない。lr は学習時に重みを動かす歩幅で、推論には残らない</li>
+      <li><strong>Q4 の重みと学習用の重み</strong>: 同じ「Qwen3.5-2B」でも、GGUF Q4 は推論専用の保存形式、safetensors bf16 は学習の入口。相互に変換できるが、Q4 → bf16 は精度が戻らない</li>
+      <li><strong>adapter を付けた直後 = 学習前</strong>: B が 0 で初期化されるので、付けた時点では元と同じ出力。「LoRA を付けたら変わった」は学習の結果であって、付けたこと自体の効果ではない</li>
+    </ul>
+
+    <h2 id="quiz">11. 確認問題</h2>
+    <details>
+      <summary>Q1. 2B を bf16 で全パラメータ学習すると VRAM はいくら要るか。内訳は。</summary>
+      <p>重み 4 GB + 勾配 4 GB + AdamW の m, v（fp32）16 GB + 活性化 ≈ <strong>24 GB 超</strong>。8GB に載らない。LoRA では勾配と m, v が A, B の分だけになり、約 5–6 GB。</p>
+    </details>
+    <details>
+      <summary>Q2. completion-only を外して全位置に loss を掛けると何が起きるか。</summary>
+      <p>100 件で共通のプロンプト文面を当てることに勾配が使われ、そこは 1 epoch で暗記される。loss の大半をプロンプト暗記が占め、答えの JSON を学ぶ信号が薄まる。加えて「氏名: 」の続きにプロンプト文を生成し始めることがある。</p>
+    </details>
+    <details>
+      <summary>Q3. d_in = d_out = 2048 の線形層に rank 8 の LoRA を当てると、増えるパラメータは何個か。元の何 % か。</summary>
+      <p>A: 8 × 2048 = 16,384、B: 2048 × 8 = 16,384、合計 <strong>32,768</strong>。元は 2048² = 4,194,304 なので約 <strong>0.78%</strong>。FFN の中間次元が大きい層では d_in と d_out が違うので、r × (d_in + d_out) で計算する。</p>
+    </details>
+    <details>
+      <summary>Q4. LoRA を付けた直後（学習 0 step）のモデルの出力は元と違うか。</summary>
+      <p>同じ。B が 0 で初期化されるので B·A = 0。出力の違いは学習で B が育った結果。</p>
+    </details>
+    <details>
+      <summary>Q5. train の名前は 19/20 当たるが held-out は 10/20。「こんにちは」には普通に返す。これは過学習か、忘却か。</summary>
+      <p>過学習（train と held-out の差が大きい）。忘却はまだ出ていない（会話が壊れていない）。epoch を増やす、lr を上げると忘却も出てくる可能性がある。</p>
+    </details>
+    <details>
+      <summary>Q6. LoRA の差分を Q4 GGUF に入れるには、量子化してから足すか、足してから量子化するか。</summary>
+      <p>足してから量子化。Q4 は整数 + scale の保存形式で、足し算の対象にならない。bf16 で W + (α/r)·B·A を計算し、その結果を f16 GGUF → Q4_K_M にする。差分が丸め幅より小さいと一部消えうるので、adapter 直後と Q4 化後を同じ 20 件で比べる。</p>
+    </details>
+
+    <h2 id="this-run">12. この検証の数字</h2>
+    <div class="callout todo">
+      <strong>フェーズ 14–16 の後に埋める</strong>。正本は <code>results/14-train-env.md</code>、<code>results/15-sft.md</code>、<code>results/16-merge.md</code>、<code>results/13-name-split.md</code>。
+      <ul>
+        <li>フェーズ 14: torch のバージョン、<code>get_arch_list()</code> に sm_120、2B bf16 の load 後 VRAM / forward peak、線形層の名前と個数</li>
+        <li>フェーズ 15: rank / alpha / lr / target_modules、trainable params と %、loss の初期値と最終値（e1 / e3）、学習中の VRAM peak、1 epoch の所要時間</li>
+        <li>フェーズ 15: held-out 20 件の JSON 率と sei 一致（学習前 → e1 → e3）、train 20 件との差、q-ja / q-code の変化</li>
+        <li>フェーズ 16: merge 後のサイズ、f16 GGUF と Q4_K_M のサイズ、Q4 化前後の held-out の差、任意で <code>--lora</code> 方式との差</li>
+        <li>フェーズ 17（任意）: 2B-Base の同設定での loss 初期値と held-out の変化。Instruct との差</li>
+      </ul>
+    </div>
+
+    <footer>
+      フェーズ 14–16 の学習ノート B。用語の初出定義はこのノートと <a href="learn-llm-basics.html">ノート A</a>。コマンドの正本は <code>phases/14</code>–<code>16</code> と <code>scripts/train/</code>。
+    </footer>
+  </div>
+</body>
+</html>

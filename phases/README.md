@@ -16,5 +16,13 @@
 | [09-base-output.md](09-base-output.md) | 同じ口で 9B-Base の出力を見る（研究） | 必須 | `serve.sh 9b-base` |
 | [10-gcp-27b.md](10-gcp-27b.md) | monzi-sandbox で 27B を L4 全載せできるか | 不要（gcloud） | [`../results/10-gcp-27b.md`](../results/10-gcp-27b.md) |
 | [11-gcp-l4-iap.md](11-gcp-l4-iap.md) | 東京 L4 に 27B 全載せ（IAP・外部 IP なし） | 不要（クラウド L4） | `scripts/gcp/`、[`../results/11-gcp-l4.md`](../results/11-gcp-l4.md) |
+| [12-gcp-webui-iap.md](12-gcp-webui-iap.md) | IAP `-L` で llama-server（L4 27B） | 不要（クラウド L4） | `scripts/gcp/start.sh` / `tunnel.sh`、[`../results/12-gcp-webui.md`](../results/12-gcp-webui.md) |
+| [13-name-split-probe.md](13-name-split-probe.md) | 姓名分割を 4 重み（9b / 9b-base / 2b / 2b-base）でプロンプトだけ試し、学習前の基準表を作る | 必須（推論） | `data/name-split/`、`scripts/name_split_probe.py`、`results/13-name-split.md` |
+| [14-train-env.md](14-train-env.md) | Blackwell で torch を動かし、2B を bf16 で 1 forward、LoRA の当て先を名前で決める | 必須（forward 1 回） | `.venv-train`、`results/14-train-env.md` |
+| [15-lora-sft-2b.md](15-lora-sft-2b.md) | 約 100 件で 2B に LoRA SFT。completion-only の label を目で確認し、型・過学習・忘却を見る | 必須（学習） | `scripts/train/`、adapter、`results/15-sft.md` |
+| [16-merge-gguf.md](16-merge-gguf.md) | merge → GGUF → Q4 → `serve.sh 2b-sft` で同じ 20 件 | 必須（推論） | `serve.sh 2b-sft`、`results/16-merge.md`、13 の表の完成 |
+| [17-base-sft.md](17-base-sft.md) | 2B-Base に同じ SFT。Instruct との差を同じ表で（任意） | 必須（学習） | `results/17-base-sft.md` |
+
+13 以降は事後学習の弧。理論は [`../notes/learn-llm-basics.html`](../notes/learn-llm-basics.html)（13 の前）と [`../notes/learn-sft-lora.html`](../notes/learn-sft-lora.html)（14 の前）。
 
 実行ルールは [`../PROGRESS.md`](../PROGRESS.md)。スペックは [`../docs/environment.md`](../docs/environment.md)。
