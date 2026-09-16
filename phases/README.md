@@ -23,6 +23,6 @@
 | [16-merge-gguf.md](16-merge-gguf.md) | merge → GGUF → Q4 → `serve.sh 2b-sft` で同じ 20 件 | 必須（推論） | `serve.sh 2b-sft`、`results/16-merge.md`、13 の表の完成 |
 | [17-base-sft.md](17-base-sft.md) | 2B-Base に同じ SFT。Instruct との差を同じ表で（任意） | 必須（学習） | `results/17-base-sft.md` |
 
-13 以降は事後学習の弧。理論は [`../notes/learn-llm-basics.html`](../notes/learn-llm-basics.html)（13 の前）と [`../notes/learn-sft-lora.html`](../notes/learn-sft-lora.html)（14 の前）。
+13 以降は事後学習の弧。理論は [`../notes/learn-llm-basics.html`](../notes/learn-llm-basics.html)（13 の前）と [`../notes/learn-sft-lora.html`](../notes/learn-sft-lora.html)（14 の前）。式を手計算する基礎路はフェーズではなく [`../primer/README.md`](../primer/README.md)（並行、GPU 不要）。
 
 実行ルールは [`../PROGRESS.md`](../PROGRESS.md)。スペックは [`../docs/environment.md`](../docs/environment.md)。
