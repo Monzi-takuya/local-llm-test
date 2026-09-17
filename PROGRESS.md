@@ -8,8 +8,10 @@
 
 - **フェーズ**: 13（姓名分割の学習なしベースライン）
 - **状態**: 未着手（推論の弧 0–12 は閉じた。ここから事後学習の弧 13 → 14 → 15 → 16 → 17）
-- **次に開くファイル**: 教材 [`notes/learn-llm-basics.html`](notes/learn-llm-basics.html) を読んでから [`phases/13-name-split-probe.md`](phases/13-name-split-probe.md)。手法の教材は [`notes/learn-sft-lora.html`](notes/learn-sft-lora.html)（フェーズ 14 の前に 1–6）
+- **次に開くファイル**: 教材 [`notes/learn-llm-basics.html`](notes/learn-llm-basics.html) を読んでから [`phases/13-name-split-probe.md`](phases/13-name-split-probe.md)。手法の教材は [`notes/learn-sft-lora.html`](notes/learn-sft-lora.html)（フェーズ 14 の前に 1–6）。式の分解は [`primer/README.md`](primer/README.md)（計画のみ、並行）
 - **クラウド**: L4 VM は TERMINATED、ディスク残。学習は手元 8GB が本命。L4 は sm_120 / Ubuntu 26.04 で詰まって人が許可したときだけ
+
+並行トラック: **primer**（[`primer/README.md`](primer/README.md)）。高校数学から行列積・勾配・文字単位の超小型 LM までを手で書く。GPU 不要。フェーズ 13–17 をブロックしない。いまは計画 MD のみ。
 
 状態の意味: `未着手` / `実施中` / `ブロック` / `完了` / `キャンセル`
 
@@ -39,7 +41,7 @@
 
 依存: 0 → 1 は GPU 不要で並列に見えるが、Python 3.12 は 0 で用意する。2 は 0 の後。3 は 2 の後が安全。4 は 2 か 3 の後。5 は 3（または 2）の後。6 は 4 の後。
 
-事後学習の弧: 13 → 14 → 15 → 16 → 17 の順。13 は 8（`serve.sh`）と 9（9B-Base）に依存し、9 の「Base は指示を守らない」の記録は 13 の表に吸収する（9 は実施中のまま残す）。14 は 13 が無くても環境作りは進められるが、順番は守る。17 は 16 の後で任意。教材は [`notes/learn-llm-basics.html`](notes/learn-llm-basics.html)（13 の前）と [`notes/learn-sft-lora.html`](notes/learn-sft-lora.html)（14 の前に 1–6、16 の後に 7–8 と 12 節の数字）。
+事後学習の弧: 13 → 14 → 15 → 16 → 17 の順。13 は 8（`serve.sh`）と 9（9B-Base）に依存し、9 の「Base は指示を守らない」の記録は 13 の表に吸収する（9 は実施中のまま残す）。14 は 13 が無くても環境作りは進められるが、順番は守る。17 は 16 の後で任意。教材は [`notes/learn-llm-basics.html`](notes/learn-llm-basics.html)（13 の前）と [`notes/learn-sft-lora.html`](notes/learn-sft-lora.html)（14 の前に 1–6、16 の後に 7–8 と 12 節の数字）。式の中身（行列積、softmax、勾配、attention の数値表）は並行して [`primer/README.md`](primer/README.md)。
 
 ## 進め方
 
@@ -79,3 +81,4 @@ Agent で推論や `nvidia-smi` を回すときは、サンドボックス外の
 | 2026-09-15 | 11 | 東京 c の `g2-standard-8`。IAP・NAT。27B Q4 `-ngl 99` は Prompt 83.9 / Gen **14.5 tok/s**、VRAM 15320 MiB。a/b は在庫切れ。約 72 分で stop。ディスク残。 [`results/11-gcp-l4.md`](results/11-gcp-l4.md) |
 | 2026-09-15 | 12 | IAP `-L` で llama-server。UI **14.6 tok/s**、VRAM 15770 MiB。`llama-server` はターゲットだけ約 4 秒で足した。約 14 分で stop。 [`results/12-gcp-webui.md`](results/12-gcp-webui.md) |
 | 2026-09-15 | 計画 | 事後学習の弧 13–17 を切った。学習対象は **Qwen3.5-2B**（Instruct。Base は 17）。手元 8GB、bf16 LoRA、completion-only。`docs/environment.md` の「ファインチューニングをやらない」を 2B LoRA に限って解禁。教材 `notes/learn-llm-basics.html` / `notes/learn-sft-lora.html` を追加。実行はまだ |
+| 2026-09-16 | primer | 基礎サブプロジェクトの計画のみ。HTML/スクリプトは未作成。形式は既存ノートと同じ HTML（KaTeX・数値表）+ 標準ライブラリの `.py`。Jupyter は使わない。行ベクトル流儀、文字単位 bigram から。 [`primer/README.md`](primer/README.md) |
